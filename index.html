@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>বিদ্যুৎ বিল ডিরেক্টরি</title>
+    
+    <!-- PWA Links -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#4F46E5">
+    <link rel="apple-touch-icon" href="icon.png">
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root { --primary: #4F46E5; --primary-hover: #4338CA; --bg-color: #F3F4F6; --card-bg: #FFFFFF; --text-main: #111827; --text-muted: #6B7280; --border-color: #E5E7EB; --success: #10B981; --danger: #EF4444; }
+        body { font-family: 'Inter', Arial, sans-serif; background-color: var(--bg-color); color: var(--text-main); margin: 0; padding: 0; user-select: none; -webkit-tap-highlight-color: transparent;}
+        
+        .app-bar { background: var(--card-bg); padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .app-bar h2 { margin: 0; font-size: 18px; font-weight: 700; color: var(--text-main); flex: 1; text-align: center;}
+        .icon-btn { background: transparent; border: none; font-size: 26px; font-weight: bold; color: var(--text-main); cursor: pointer; padding: 5px 10px; transition: 0.2s; display: flex; align-items: center; justify-content: center;}
+        .icon-btn:active { transform: scale(0.9); }
+
+        .container { max-width: 600px; margin: 0 auto; padding: 20px 15px; padding-bottom: 90px; }
+        
+        input, select { width: 100%; padding: 14px; margin: 8px 0; border: 1px solid var(--border-color); border-radius: 12px; box-sizing: border-box; font-size: 15px; background: #F9FAFB; transition: border 0.3s, box-shadow 0.3s; outline: none;}
+        input:focus, select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1); background: white;}
+        
+        .primary-btn { background-color: var(--primary); color: white; border: none; cursor: pointer; font-weight: 600; font-size: 16px; padding: 14px; border-radius: 12px; margin-top: 15px; width: 100%; transition: 0.2s;}
+        .primary-btn:active { background-color: var(--primary-hover); transform: scale(0.98);}
+
+        .search-row { display: flex; gap: 10px; margin-bottom: 15px;}
+        .search-row > .search-input-box { flex: 6.5; } 
+        .search-row > .filter-select-box { flex: 3.5; }
+        .search-row input, .search-row select { margin: 0; padding: 12px 14px; background: white; box-shadow: 0 1px 2px rgba(0,0,0,0.05);}
+
+        .count-bar { text-align: center; font-size: 13px; font-weight: 600; color: var(--primary); margin-bottom: 20px; padding: 6px 12px; background: #EEF2FF; border-radius: 20px; display: inline-block; margin-left: 50%; transform: translateX(-50%);}
+
+        .card { background: var(--card-bg); padding: 16px; margin-bottom: 16px; border-radius: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06); cursor: pointer; transition: transform 0.1s, box-shadow 0.1s; border: 1px solid #f1f1f1;}
+        .card:active { transform: scale(0.98); background-color: #F9FAFB; }
+        .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;}
+        .card-name { font-size: 17px; font-weight: 700; color: var(--text-main); display: flex; align-items: center;}
+        .serial-badge { background: var(--primary); color: white; width: 24px; height: 24px; display: flex; justify-content: center; align-items: center; border-radius: 50%; font-size: 12px; font-weight: 700; margin-right: 10px; }
+        .group-tag { background: #F3F4F6; padding: 4px 10px; border-radius: 12px; font-size: 11px; color: var(--text-muted); font-weight: 600;}
+        .card-details { font-size: 14px; color: var(--text-muted); margin-bottom: 15px; line-height: 1.6;}
+        .card-details strong { color: #374151; font-weight: 600;}
+
+        .copy-section { display: flex; flex-direction: column; gap: 8px; }
+        .info-block { display: flex; justify-content: space-between; align-items: center; background: #F9FAFB; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--border-color); transition: 0.2s;}
+        .info-block:active { border-color: var(--primary); }
+        .info-label { font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px;}
+        .info-value { font-size: 15px; font-weight: 700; color: var(--text-main); letter-spacing: 0.5px;}
+        .copy-icon-btn { background: white; border: 1px solid var(--border-color); border-radius: 8px; width: 36px; height: 36px; display: flex; justify-content: center; align-items: center; cursor: pointer; color: var(--primary); box-shadow: 0 1px 2px rgba(0,0,0,0.05); font-size: 16px; transition: 0.2s;}
+        .copy-icon-btn:active { background: var(--primary); color: white; border-color: var(--primary); }
+
+        .fab { position: fixed; bottom: 25px; right: 25px; width: 60px; height: 60px; background: var(--primary); color: white; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 28px; box-shadow: 0 4px 10px rgba(79, 70, 229, 0.4); border: none; cursor: pointer; z-index: 90; transition: transform 0.2s; }
+        .fab:active { transform: scale(0.9); }
+
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(17, 24, 39, 0.4); backdrop-filter: blur(4px); overflow: auto;}
+        .top-modal { z-index: 1100 !important; }
+        .modal-content { background-color: var(--card-bg); margin: 5% auto; margin-top: 15%; padding: 25px 20px; border-radius: 20px; width: 85%; max-width: 400px; position: relative; box-shadow: 0 10px 25px rgba(0,0,0,0.1); animation: slideUp 0.3s ease-out;}
+        @keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        
+        .close-btn { position: absolute; top: 15px; right: 15px; background: #F3F4F6; color: var(--text-muted); width: 30px; height: 30px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: bold; cursor: pointer; font-size: 16px;}
+        .section-title { font-size: 15px; font-weight: 700; color: var(--text-main); margin-bottom: 10px; margin-top: 25px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;}
+
+        .action-sheet-content { background-color: var(--card-bg); margin: 40% auto; padding: 20px; border-radius: 20px; width: 75%; max-width: 320px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.15); animation: scaleIn 0.2s ease-out; }
+        @keyframes scaleIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        
+        .action-sheet-btn { width: 100%; padding: 14px; margin: 6px 0; border: none; border-radius: 12px; font-size: 15px; font-weight: 600; cursor: pointer; transition: 0.2s;}
+        .action-edit { background-color: #EEF2FF; color: var(--primary); }
+        .action-delete { background-color: #FEF2F2; color: var(--danger); }
+        .action-cancel { background-color: #F3F4F6; color: var(--text-main); margin-top: 15px;}
+
+        #toast { visibility: hidden; min-width: 220px; background-color: #1F2937; color: #fff; text-align: center; border-radius: 30px; padding: 12px 20px; position: fixed; z-index: 2000; left: 50%; bottom: 30px; font-size: 14px; font-weight: 500; box-shadow: 0 4px 12px rgba(0,0,0,0.15); opacity: 0; transform: translateX(-50%) translateY(20px); transition: all 0.3s ease; }
+        #toast.show { visibility: visible; opacity: 1; transform: translateX(-50%) translateY(0); }
+
+        .no-data { text-align: center; color: var(--text-muted); margin-top: 60px; font-size: 15px; line-height: 1.6; }
+        
+        .manage-box { max-height: 250px; overflow-y: auto; background: white; border: 1px solid var(--border-color); border-top: none; border-radius: 0 0 12px 12px; padding: 5px; display: none; }
+        .manage-item { padding: 14px 12px; border-bottom: 1px solid #F3F4F6; font-size: 15px; font-weight: 500; cursor: pointer;}
+        .manage-item:active { background-color: #F9FAFB; }
+        .accordion-header { background: #F9FAFB; padding: 14px 16px; border-radius: 12px; font-weight: 600; cursor: pointer; display: flex; justify-content: space-between; align-items: center; color: var(--text-main); margin-top: 15px; border: 1px solid var(--border-color);}
+    </style>
+</head>
+<body>
+
+<div class="app-bar">
+    <button class="icon-btn" onclick="openSettingsModal()">&#8942;</button>
+    <h2>বিদ্যুৎ বিল ডিরেক্টরি</h2>
+    <div style="width: 34px;"></div>
+</div>
+
+<div class="container">
+    <div class="search-row">
+        <div class="search-input-box"><input type="text" id="searchInput" placeholder="🔍 নাম দিয়ে খুঁজুন..." onkeyup="displayCustomers()"></div>
+        <div class="filter-select-box">
+            <select id="filterGroup" onchange="displayCustomers()">
+                <option value="All">সব গোষ্ঠী</option>
+            </select>
+        </div>
+    </div>
+    <div id="customerCountBox" class="count-bar"></div>
+    <div id="customerList"></div>
+</div>
+
+<button class="fab" onclick="openAddModal()">+</button>
+
+<!-- Add Modal -->
+<div id="addModal" class="modal">
+    <div class="modal-content">
+        <div class="close-btn" onclick="closeModal('addModal')">✕</div>
+        <h3 class="section-title" style="margin-top:0;">নতুন গোষ্ঠী তৈরি করুন</h3>
+        <div style="display: flex; gap: 8px;">
+            <input type="text" id="newGroup" placeholder="যেমন: শরীফ বাড়ি">
+            <button class="primary-btn" style="margin-top: 8px; width: 80px;" onclick="addGroup()">যুক্ত</button>
+        </div>
+
+        <h3 class="section-title" id="formTitle">নতুন গ্রাহক যোগ করুন</h3>
+        <input type="hidden" id="editCustomerId" value="">
+        <input type="text" id="cName" placeholder="গ্রাহকের নাম *">
+        <input type="text" id="cFather" placeholder="পিতার নাম">
+        <input type="text" id="cMother" placeholder="মাতার নাম (ঐচ্ছিক)">
+        <input type="text" id="cAddress" placeholder="ঠিকানা">
+        <input type="number" id="cMobile" placeholder="মোবাইল নম্বর *">
+        <input type="number" id="cSms" placeholder="SMS অ্যাকাউন্ট নাম্বার *">
+        <select id="cGroup"><option value="">গোষ্ঠী নির্বাচন করুন *</option></select>
+        <button class="primary-btn" id="saveBtn" onclick="saveCustomer()">সেভ করুন</button>
+    </div>
+</div>
+
+<!-- Settings Modal -->
+<div id="settingsModal" class="modal">
+    <div class="modal-content">
+        <div class="close-btn" onclick="closeModal('settingsModal')">✕</div>
+        <h3 style="text-align:center; color:var(--text-main); margin-top:0; font-size: 18px;">সেটিংস ও ব্যাকআপ</h3>
+        <h3 class="section-title">ডেটা ব্যাকআপ ও রিস্টোর</h3>
+        <button class="primary-btn" style="background: #10B981; margin-top: 5px; margin-bottom: 10px;" onclick="exportData()">⬇️ ডেটা ব্যাকআপ নিন</button>
+        <div style="background: #F9FAFB; padding: 12px; border-radius: 12px; border: 1px dashed #10B981; text-align: center;">
+            <span style="font-size: 13px; color: var(--text-muted); display:block; margin-bottom:8px;">রিস্টোর করতে ব্যাকআপ ফাইল সিলেক্ট করুন:</span>
+            <input type="file" id="importFile" onchange="importData(event)" accept=".json" style="padding: 8px; margin: 0; background: white; border: 1px solid #ddd;">
+        </div>
+        <div class="accordion-header" onclick="toggleGroupList()">
+            <span>📁 গোষ্ঠী ম্যানেজমেন্ট</span>
+            <span id="groupToggleIcon">▼</span>
+        </div>
+        <div class="manage-box" id="settingsGroupList"></div>
+        <div id="groupHintText" style="font-size: 12px; color: var(--text-muted); text-align: center; margin-top:8px; display:none;">এডিট বা ডিলিট করতে নামের ওপর চেপে ধরুন</div>
+    </div>
+</div>
+
+<!-- Action Modals (With top-modal class) -->
+<div id="actionModal" class="modal top-modal">
+    <div class="action-sheet-content">
+        <h3 id="actionCustomerName" style="margin-top:0; margin-bottom: 20px; color:var(--text-main); font-size: 18px;">গ্রাহক অপশন</h3>
+        <button class="action-sheet-btn action-edit" onclick="triggerEdit()">✏️ এডিট করুন</button>
+        <button class="action-sheet-btn action-delete" onclick="triggerDelete()">🗑️ ডিলিট করুন</button>
+        <button class="action-sheet-btn action-cancel" onclick="closeModal('actionModal')">বাতিল</button>
+    </div>
+</div>
+
+<div id="groupActionModal" class="modal top-modal">
+    <div class="action-sheet-content">
+        <h3 id="actionGroupName" style="margin-top:0; margin-bottom: 20px; color:var(--text-main); font-size: 18px;">গোষ্ঠী অপশন</h3>
+        <button class="action-sheet-btn action-edit" onclick="triggerGroupEdit()">✏️ নাম পরিবর্তন</button>
+        <button class="action-sheet-btn action-delete" onclick="triggerGroupDelete()">🗑️ মুছে ফেলুন</button>
+        <button class="action-sheet-btn action-cancel" onclick="closeModal('groupActionModal')">বাতিল</button>
+    </div>
+</div>
+
+<div id="toast">Copied!</div>
+
+<script>
+    let groups = ['শরীফ বাড়ি', 'ফরাজি বাড়ি'];
+    let customers = [];
+    let selectedCustomerId = null; 
+    let selectedGroupIndex = null;
+    let selectedGroupName = "";
+
+    function loadData() {
+        let savedGroups = localStorage.getItem('billGroups');
+        let savedCustomers = localStorage.getItem('billCustomers');
+        if (savedGroups) groups = JSON.parse(savedGroups);
+        if (savedCustomers) {
+            customers = JSON.parse(savedCustomers);
+            customers.forEach(c => { 
+                if(c.mobile === undefined) c.mobile = ""; 
+                if(c.mother === undefined) c.mother = ""; 
+            });
+        }
+        updateUI();
+    }
+
+    function saveData() {
+        localStorage.setItem('billGroups', JSON.stringify(groups));
+        localStorage.setItem('billCustomers', JSON.stringify(customers));
+    }
+
+    function updateUI() { updateDropdowns(); displayCustomers(); renderSettingsGroupList(); }
+
+    function openAddModal() { resetForm(); document.getElementById('addModal').style.display = 'block'; }
+    function openSettingsModal() {
+        renderSettingsGroupList();
+        document.getElementById('settingsGroupList').style.display = 'none';
+        document.getElementById('groupHintText').style.display = 'none';
+        document.getElementById('groupToggleIcon').innerText = '▼';
+        document.getElementById('settingsModal').style.display = 'block';
+    }
+    function closeModal(modalId) { document.getElementById(modalId).style.display = 'none'; }
+    
+    window.onclick = function(event) { 
+        if (event.target == document.getElementById('addModal')) closeModal('addModal');
+        if (event.target == document.getElementById('settingsModal')) closeModal('settingsModal');
+        if (event.target == document.getElementById('actionModal')) closeModal('actionModal');
+        if (event.target == document.getElementById('groupActionModal')) closeModal('groupActionModal');
+    }
+
+    function toggleGroupList() {
+        let list = document.getElementById('settingsGroupList'), hint = document.getElementById('groupHintText'), icon = document.getElementById('groupToggleIcon');
+        if (list.style.display === 'none' || list.style.display === '') {
+            list.style.display = 'block'; hint.style.display = 'block'; icon.innerText = '▲';
+        } else {
+            list.style.display = 'none'; hint.style.display = 'none'; icon.innerText = '▼';
+        }
+    }
+
+    function updateDropdowns() {
+        let cGroup = document.getElementById('cGroup'), filterGroup = document.getElementById('filterGroup');
+        cGroup.innerHTML = '<option value="">গোষ্ঠী নির্বাচন করুন *</option>';
+        filterGroup.innerHTML = '<option value="All">সব গোষ্ঠী</option>';
+        groups.forEach(g => { cGroup.innerHTML += `<option value="${g}">${g}</option>`; filterGroup.innerHTML += `<option value="${g}">${g}</option>`; });
+    }
+
+    function renderSettingsGroupList() {
+        let groupList = document.getElementById('settingsGroupList');
+        groupList.innerHTML = '';
+        groups.forEach((g, index) => {
+            let item = document.createElement('div');
+            item.className = 'manage-item'; item.innerText = g;
+            let pressTimer;
+            const startPress = () => {
+                pressTimer = setTimeout(() => {
+                    selectedGroupIndex = index; selectedGroupName = g;
+                    document.getElementById('actionGroupName').innerText = g;
+                    document.getElementById('groupActionModal').style.display = 'block';
+                }, 600);
+            };
+            const cancelPress = () => clearTimeout(pressTimer);
+            item.addEventListener('mousedown', startPress); item.addEventListener('mouseup', cancelPress); item.addEventListener('mouseleave', cancelPress);
+            item.addEventListener('touchstart', startPress); item.addEventListener('touchend', cancelPress); item.addEventListener('touchmove', cancelPress);
+            groupList.appendChild(item);
+        });
+    }
+
+    function triggerGroupEdit() {
+        closeModal('groupActionModal');
+        let newName = prompt("গোষ্ঠীর নতুন নাম লিখুন:", selectedGroupName);
+        if (newName !== null) {
+            newName = newName.trim();
+            if (newName !== "" && newName !== selectedGroupName) {
+                if(groups.includes(newName)) { alert("এই নামটি আগেই যুক্ত করা আছে!"); return; }
+                groups[selectedGroupIndex] = newName;
+                customers.forEach(c => { if(c.group === selectedGroupName) c.group = newName; });
+                saveData(); updateUI(); showToast("নাম পরিবর্তন হয়েছে!");
+            }
+        }
+    }
+
+    function triggerGroupDelete() {
+        closeModal('groupActionModal');
+        if(confirm(`আপনি কি '${selectedGroupName}' মুছে ফেলতে চান?`)) {
+            groups.splice(selectedGroupIndex, 1); saveData(); updateUI(); showToast("গোষ্ঠী মুছে ফেলা হয়েছে!");
+        }
+    }
+
+    function addGroup() {
+        let newGroup = document.getElementById('newGroup').value.trim();
+        if (newGroup && !groups.includes(newGroup)) {
+            groups.push(newGroup); saveData(); updateUI();
+            document.getElementById('newGroup').value = ''; showToast("নতুন গোষ্ঠী যুক্ত হয়েছে");
+        } else { alert('সঠিক নাম দিন।'); }
+    }
+
+    function saveCustomer() {
+        let id = document.getElementById('editCustomerId').value, name = document.getElementById('cName').value.trim(), father = document.getElementById('cFather').value.trim(), mother = document.getElementById('cMother').value.trim(), address = document.getElementById('cAddress').value.trim(), mobile = document.getElementById('cMobile').value.trim(), sms = document.getElementById('cSms').value.trim(), group = document.getElementById('cGroup').value;
+        if (name && mobile && sms && group) {
+            if(id) {
+                let index = customers.findIndex(c => String(c.id) === String(id));
+                if(index !== -1) customers[index] = { id: parseFloat(id), name, father, mother, address, mobile, sms, group };
+                showToast("তথ্য আপডেট হয়েছে!");
+            } else {
+                customers.push({ id: Date.now(), name, father, mother, address, mobile, sms, group });
+                showToast("গ্রাহক যোগ করা হয়েছে!");
+            }
+            saveData(); updateUI(); closeModal('addModal');
+        } else { alert('দয়া করে নাম, মোবাইল নম্বর, SMS অ্যাকাউন্ট এবং গোষ্ঠী অবশ্যই পূরণ করুন।'); }
+    }
+
+    function triggerEdit() {
+        closeModal('actionModal');
+        let c = customers.find(item => item.id === selectedCustomerId);
+        if(c) {
+            document.getElementById('editCustomerId').value = c.id; document.getElementById('cName').value = c.name; document.getElementById('cFather').value = c.father; document.getElementById('cMother').value = c.mother || ''; document.getElementById('cAddress').value = c.address; document.getElementById('cMobile').value = c.mobile || ''; document.getElementById('cSms').value = c.sms; document.getElementById('cGroup').value = c.group;
+            document.getElementById('formTitle').innerText = "গ্রাহকের তথ্য আপডেট করুন"; document.getElementById('saveBtn').innerText = "আপডেট করুন"; document.getElementById('addModal').style.display = 'block'; 
+        }
+    }
+
+    function triggerDelete() {
+        closeModal('actionModal');
+        if(confirm("এই গ্রাহকের তথ্য মুছে ফেলবেন?")) {
+            customers = customers.filter(c => c.id !== selectedCustomerId); saveData(); updateUI(); showToast("গ্রাহক মুছে ফেলা হয়েছে!");
+        }
+    }
+
+    function resetForm() {
+        document.getElementById('editCustomerId').value = ''; document.getElementById('cName').value = ''; document.getElementById('cFather').value = ''; document.getElementById('cMother').value = ''; document.getElementById('cAddress').value = ''; document.getElementById('cMobile').value = ''; document.getElementById('cSms').value = ''; document.getElementById('cGroup').value = '';
+        document.getElementById('formTitle').innerText = "নতুন গ্রাহক যোগ করুন"; document.getElementById('saveBtn').innerText = "সেভ করুন";
+    }
+
+    function exportData() {
+        const data = { groups: groups, customers: customers };
+        const blob = new Blob([JSON.stringify(data)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = 'বিদ্যুৎ_বিল_ব্যাকআপ.json'; a.click();
+        URL.revokeObjectURL(url); showToast("ব্যাকআপ ডাউনলোড হয়েছে!");
+    }
+
+    function importData(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const data = JSON.parse(e.target.result);
+                if (data.groups && data.customers) { groups = data.groups; customers = data.customers; saveData(); updateUI(); showToast("রিস্টোর সফল হয়েছে!"); closeModal('settingsModal'); } else { alert("ভুল ফাইল!"); }
+            } catch (err) { alert("ফাইল পড়তে সমস্যা হয়েছে!"); }
+            event.target.value = ""; 
+        };
+        reader.readAsText(file);
+    }
+
+    function copyText(text, type) {
+        let tempInput = document.createElement("input"); tempInput.value = text; document.body.appendChild(tempInput); tempInput.select(); tempInput.setSelectionRange(0, 99999); 
+        try { document.execCommand("copy"); showToast(type + " কপি হয়েছে!"); } catch (err) { alert("কপি করতে সমস্যা হয়েছে!"); }
+        document.body.removeChild(tempInput);
+    }
+
+    function showToast(message) {
+        let toast = document.getElementById("toast"); toast.innerText = message; toast.className = "show";
+        setTimeout(function(){ toast.className = toast.className.replace("show", ""); }, 2500);
+    }
+
+    function displayCustomers() {
+        let searchQuery = document.getElementById('searchInput').value.toLowerCase(), filterGroup = document.getElementById('filterGroup').value, listContainer = document.getElementById('customerList'), countBox = document.getElementById('customerCountBox');
+        listContainer.innerHTML = '';
+        let filtered = customers.filter(c => { return (c.name.toLowerCase().includes(searchQuery)) && ((filterGroup === 'All') || (c.group === filterGroup)); });
+        countBox.innerText = `মোট গ্রাহক: ${filtered.length} জন`;
+
+        if (filtered.length === 0) { listContainer.innerHTML = '<div class="no-data">কোনো গ্রাহক পাওয়া যায়নি।<br>নিচে <b>+</b> বাটনে ক্লিক করে তথ্য যোগ করুন।</div>'; return; }
+
+        filtered.forEach((c, index) => {
+            let motherHTML = c.mother ? `<div><strong>মাতা:</strong> ${c.mother}</div>` : '';
+            let card = document.createElement('div'); card.className = 'card';
+            card.innerHTML = `
+                <div class="card-header"><div class="card-name"><span class="serial-badge">${index + 1}</span> ${c.name}</div><div class="group-tag">${c.group}</div></div>
+                <div class="card-details"><div><strong>পিতা:</strong> ${c.father}</div>${motherHTML}<div><strong>ঠিকানা:</strong> ${c.address}</div></div>
+                <div class="copy-section">
+                    <div class="info-block" onclick="event.stopPropagation();"><div><div class="info-label">মোবাইল নম্বর</div><div class="info-value">${c.mobile || 'দেওয়া নেই'}</div></div><button class="copy-icon-btn" onclick="copyText('${c.mobile}', 'মোবাইল নম্বর')">📋</button></div>
+                    <div class="info-block" onclick="event.stopPropagation();"><div><div class="info-label">SMS অ্যাকাউন্ট</div><div class="info-value">${c.sms}</div></div><button class="copy-icon-btn" onclick="copyText('${c.sms}', 'SMS অ্যাকাউন্ট')">📋</button></div>
+                </div>
+            `;
+            let pressTimer;
+            const startPress = () => { pressTimer = setTimeout(() => { selectedCustomerId = c.id; document.getElementById('actionCustomerName').innerText = c.name; document.getElementById('actionModal').style.display = 'block'; }, 600); };
+            const cancelPress = () => clearTimeout(pressTimer);
+            card.addEventListener('mousedown', startPress); card.addEventListener('mouseup', cancelPress); card.addEventListener('mouseleave', cancelPress);
+            card.addEventListener('touchstart', startPress); card.addEventListener('touchend', cancelPress); card.addEventListener('touchmove', cancelPress);
+            listContainer.appendChild(card);
+        });
+    }
+    
+    // PWA Service Worker Registration
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./service-worker.js')
+                .then((reg) => console.log('Service Worker registered.', reg))
+                .catch((err) => console.log('Service Worker not registered.', err));
+        });
+    }
+
+    window.onload = loadData;
+</script>
+</body>
+</html>

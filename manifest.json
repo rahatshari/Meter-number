@@ -1,0 +1,21 @@
+{
+  "name": "বিদ্যুৎ বিল ডিরেক্টরি",
+  "short_name": "বিদ্যুৎ বিল",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#F3F4F6",
+  "theme_color": "#4F46E5",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
