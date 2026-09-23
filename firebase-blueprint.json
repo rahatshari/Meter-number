@@ -1,0 +1,44 @@
+{
+  "entities": {
+    "Customer": {
+      "title": "Customer",
+      "description": "Customer entity for electricity meter records and bill tracking",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique ID of customer" },
+        "name": { "type": "string", "maxLength": 100, "description": "Customer name" },
+        "father": { "type": "string", "maxLength": 100, "description": "Father's name" },
+        "mother": { "type": "string", "maxLength": 100, "description": "Mother's name" },
+        "address": { "type": "string", "maxLength": 200, "description": "Address" },
+        "mobile": { "type": "string", "maxLength": 30, "description": "Mobile contact number" },
+        "sms": { "type": "string", "maxLength": 50, "description": "SMS account or meter number" },
+        "dueDate": { "type": "string", "maxLength": 10, "description": "Due day of the month (1-31)" },
+        "group": { "type": "string", "maxLength": 100, "description": "Group/Neighborhood name" },
+        "lastPaidMonth": { "type": "string", "maxLength": 20, "description": "Last paid month in YYYY-M format" },
+        "userId": { "type": "string", "description": "Owner user ID" }
+      },
+      "required": ["id", "name", "mobile", "sms", "dueDate", "group", "userId"]
+    },
+    "Group": {
+      "title": "Group",
+      "description": "Group entity for organizing customers by family/area/neighborhood",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique ID of the group" },
+        "name": { "type": "string", "maxLength": 100, "description": "Group name" },
+        "userId": { "type": "string", "description": "Owner user ID" }
+      },
+      "required": ["id", "name", "userId"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/customers/{customerId}": {
+      "schema": { "$ref": "#/entities/Customer" },
+      "description": "Customer records belonging to a specific authenticated user"
+    },
+    "/users/{userId}/groups/{groupId}": {
+      "schema": { "$ref": "#/entities/Group" },
+      "description": "Groups belonging to a specific authenticated user"
+    }
+  }
+}

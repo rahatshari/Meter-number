@@ -1,0 +1,14 @@
+{
+  "name": "meter-number",
+  "version": "1.0.0",
+  "description": "Electricity Bill Directory - বিদ্যুৎ বিল ডিরেক্টরি",
+  "type": "module",
+  "scripts": {
+    "dev": "node server.js",
+    "start": "node server.js",
+    "build": "node -e 'console.log(\"Build successful\")'"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "name": "বিদ্যুৎ বিল ডিরেক্টরি",
+  "description": "Electricity Bill Directory - বিদ্যুৎ বিল ও গ্রাহকের তথ্য সহজে ট্র্যাক এবং পরিচালনা করার অ্যাপ্লিকেশন",
+  "requestFramePermissions": [],
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

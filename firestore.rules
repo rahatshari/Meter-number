@@ -1,0 +1,81 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net: default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidCustomer(data, userId) {
+      return data.keys().hasAll(['id', 'name', 'mobile', 'sms', 'dueDate', 'group', 'userId'])
+        && data.keys().hasOnly(['id', 'name', 'father', 'mother', 'address', 'mobile', 'sms', 'dueDate', 'group', 'lastPaidMonth', 'userId', 'createdAt', 'updatedAt'])
+        && data.userId == userId
+        && data.id is string && data.id.size() > 0 && data.id.size() <= 128
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 100
+        && (!('father' in data) || (data.father is string && data.father.size() <= 100))
+        && (!('mother' in data) || (data.mother is string && data.mother.size() <= 100))
+        && (!('address' in data) || (data.address is string && data.address.size() <= 200))
+        && data.mobile is string && data.mobile.size() > 0 && data.mobile.size() <= 30
+        && data.sms is string && data.sms.size() > 0 && data.sms.size() <= 50
+        && data.dueDate is string && data.dueDate.size() > 0 && data.dueDate.size() <= 10
+        && data.group is string && data.group.size() > 0 && data.group.size() <= 100
+        && (!('lastPaidMonth' in data) || (data.lastPaidMonth is string && data.lastPaidMonth.size() <= 20));
+    }
+
+    function isValidGroup(data, userId) {
+      return data.keys().hasAll(['id', 'name', 'userId'])
+        && data.keys().hasOnly(['id', 'name', 'userId', 'createdAt', 'updatedAt'])
+        && data.userId == userId
+        && data.id is string && data.id.size() > 0 && data.id.size() <= 128
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 100;
+    }
+
+    match /users/{userId} {
+      match /customers/{customerId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId)
+          && isValidId(customerId)
+          && isValidCustomer(incoming(), userId);
+        allow update: if isOwner(userId)
+          && isValidId(customerId)
+          && isValidCustomer(incoming(), userId)
+          && incoming().id == existing().id
+          && incoming().userId == existing().userId;
+        allow delete: if isOwner(userId) && isValidId(customerId);
+      }
+
+      match /groups/{groupId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId)
+          && isValidId(groupId)
+          && isValidGroup(incoming(), userId);
+        allow update: if isOwner(userId)
+          && isValidId(groupId)
+          && isValidGroup(incoming(), userId)
+          && incoming().id == existing().id
+          && incoming().userId == existing().userId;
+        allow delete: if isOwner(userId) && isValidId(groupId);
+      }
+    }
+  }
+}

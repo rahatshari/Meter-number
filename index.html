@@ -2,189 +2,1127 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>বিদ্যুৎ বিল ডিরেক্টরি</title>
+    <meta name="description" content="Electricity Bill Directory - বিদ্যুৎ বিল ও গ্রাহকের তথ্য সহজে ট্র্যাক এবং পরিচালনা করার অ্যাপ্লিকেশন">
+    <meta property="og:title" content="বিদ্যুৎ বিল ডিরেক্টরি">
+    <meta property="og:description" content="Electricity Bill Directory - বিদ্যুৎ বিল ও গ্রাহকের তথ্য সহজে ট্র্যাক এবং পরিচালনা করার অ্যাপ্লিকেশন">
     
     <!-- PWA Links -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#4F46E5">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <link rel="apple-touch-icon" href="icon.png">
 
-    <!-- আধুনিক ফন্ট -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- প্রফেশনাল ও আধুনিক ফন্ট (Bengali & English) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     
     <style>
-        :root { --primary: #4F46E5; --primary-hover: #4338CA; --bg-color: #F3F4F6; --card-bg: #FFFFFF; --text-main: #111827; --text-muted: #6B7280; --border-color: #E5E7EB; --success: #10B981; --danger: #EF4444; --warning: #F59E0B;}
-        
-        /* PULL-TO-REFRESH বন্ধ করার নিরাপদ উপায় (স্ক্রলিং নষ্ট হবে না) */
-        html, body { 
-            font-family: 'Inter', Arial, sans-serif; 
-            background-color: var(--bg-color); 
-            color: var(--text-main); 
-            margin: 0; padding: 0; 
-            user-select: none; 
-            -webkit-tap-highlight-color: transparent;
-            overscroll-behavior-y: contain; /* এর ফলে ওপর থেকে টানলে রিফ্রেশ হবে না */
+        :root { 
+            --primary: #4F46E5; 
+            --primary-hover: #4338CA; 
+            --primary-light: #EEF2FF;
+            --primary-border: #C7D2FE;
+            --bg-color: #F8FAFC; 
+            --card-bg: #FFFFFF; 
+            --text-main: #0F172A; 
+            --text-muted: #64748B; 
+            --border-color: #E2E8F0; 
+            --success: #059669; 
+            --success-light: #ECFDF5;
+            --success-border: #A7F3D0;
+            --danger: #DC2626; 
+            --danger-light: #FEF2F2;
+            --danger-border: #FECACA;
+            --warning: #D97706;
+            --warning-light: #FFFBEB;
+            --warning-border: #FDE68A;
+            --radius-md: 12px;
+            --radius-lg: 18px;
+            --radius-xl: 24px;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+            --shadow-lg: 0 10px 25px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
+            --shadow-fab: 0 10px 20px -3px rgba(79, 70, 229, 0.4), 0 4px 6px -4px rgba(79, 70, 229, 0.3);
         }
         
-        .app-bar { background: var(--card-bg); padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-        .app-bar h2 { margin: 0; font-size: 18px; font-weight: 700; color: var(--text-main); flex: 1; text-align: center;}
-        .icon-btn { background: transparent; border: none; font-size: 26px; font-weight: bold; color: var(--text-main); cursor: pointer; padding: 5px 10px; transition: 0.2s; display: flex; align-items: center; justify-content: center;}
-        .icon-btn:active { transform: scale(0.9); }
+        * {
+            box-sizing: border-box;
+            font-family: 'Hind Siliguri', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
 
-        .container { max-width: 600px; margin: 0 auto; padding: 20px 15px; padding-bottom: 90px; }
+        html, body { 
+            background-color: var(--bg-color); 
+            color: var(--text-main); 
+            margin: 0; 
+            padding: 0; 
+            user-select: none; 
+            overscroll-behavior-y: contain;
+            font-size: 15px;
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .tabular {
+            font-family: 'Plus Jakarta Sans', monospace, sans-serif;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* Top Mobile App Bar */
+        .app-bar { 
+            background: rgba(255, 255, 255, 0.92); 
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 10px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            position: sticky; 
+            top: 0; 
+            z-index: 100; 
+            border-bottom: 1px solid var(--border-color);
+        }
+        .app-bar-brand {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-align: center;
+            flex: 1;
+            justify-content: center;
+        }
+        .brand-icon-wrapper {
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #4F46E5, #6366F1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            flex-shrink: 0;
+            box-shadow: 0 2px 6px rgba(79, 70, 229, 0.3);
+        }
+        .brand-icon-wrapper svg {
+            width: 16px;
+            height: 16px;
+        }
+        .app-bar h1 { 
+            margin: 0; 
+            font-size: 17px; 
+            font-weight: 700; 
+            color: var(--text-main); 
+            letter-spacing: -0.3px;
+        }
+        .icon-btn { 
+            background: #F1F5F9; 
+            border: 1px solid var(--border-color); 
+            color: var(--text-main); 
+            cursor: pointer; 
+            width: 40px;
+            height: 40px;
+            border-radius: 12px; 
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); 
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
+            padding: 0;
+            flex-shrink: 0;
+        }
+        .icon-btn:active { 
+            transform: scale(0.92); 
+            background: #E2E8F0; 
+        }
+
+        .account-btn {
+            background: #F1F5F9;
+            border: 1.5px solid var(--border-color);
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            overflow: hidden;
+            padding: 0;
+            position: relative;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            flex-shrink: 0;
+        }
+        .account-btn:active { transform: scale(0.92); }
+        .account-avatar-img { width: 100%; height: 100%; object-fit: cover; }
+        .account-initial { font-weight: 700; font-size: 15px; color: var(--primary); }
+        .account-badge-dot {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #10B981;
+            border: 2px solid white;
+            display: none;
+        }
+        .account-badge-dot.show { display: block; }
+
+        .container { 
+            max-width: 580px; 
+            margin: 0 auto; 
+            padding: 14px 16px calc(90px + env(safe-area-inset-bottom, 0px)); 
+        }
         
-        input, select { width: 100%; padding: 14px; margin: 8px 0; border: 1px solid var(--border-color); border-radius: 12px; box-sizing: border-box; font-size: 15px; background: #F9FAFB; transition: border 0.3s, box-shadow 0.3s; outline: none;}
-        input:focus, select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1); background: white;}
+        /* Modern Cloud Sync Widget */
+        .cloud-sync-card {
+            background: linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%);
+            border-radius: var(--radius-lg);
+            padding: 12px 14px;
+            margin-bottom: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-sm);
+            gap: 12px;
+            position: relative;
+            overflow: hidden;
+        }
+        .cloud-sync-card::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: #CBD5E1;
+            transition: background 0.3s;
+        }
+        .cloud-sync-card.synced::before {
+            background: #10B981;
+        }
+        .sync-info { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+        .sync-icon-circle {
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
+            background: #F1F5F9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            color: var(--text-muted);
+            transition: all 0.3s;
+        }
+        .cloud-sync-card.synced .sync-icon-circle {
+            background: #ECFDF5;
+            color: #059669;
+        }
+        .sync-status-indicator { 
+            width: 8px; 
+            height: 8px; 
+            border-radius: 50%; 
+            background: #94A3B8; 
+            display: inline-block;
+            margin-right: 4px;
+        }
+        .sync-status-indicator.active { 
+            background: #10B981; 
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25); 
+            animation: pulse-dot 2s infinite;
+        }
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .sync-title { 
+            font-size: 13px; 
+            font-weight: 700; 
+            color: var(--text-main); 
+            display: flex; 
+            align-items: center; 
+            white-space: nowrap; 
+            overflow: hidden; 
+            text-overflow: ellipsis;
+        }
+        .sync-desc { 
+            font-size: 11px; 
+            color: var(--text-muted); 
+            margin-top: 1px; 
+            white-space: nowrap; 
+            overflow: hidden; 
+            text-overflow: ellipsis; 
+        }
         
-        .primary-btn { background-color: var(--primary); color: white; border: none; cursor: pointer; font-weight: 600; font-size: 16px; padding: 14px; border-radius: 12px; margin-top: 15px; width: 100%; transition: 0.2s;}
-        .primary-btn:active { background-color: var(--primary-hover); transform: scale(0.98);}
+        .google-btn {
+            background: white;
+            border: 1px solid #CBD5E1;
+            border-radius: 10px;
+            padding: 8px 12px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #1E293B;
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            cursor: pointer;
+            box-shadow: var(--shadow-sm);
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            white-space: nowrap;
+            flex-shrink: 0;
+            min-height: 38px;
+        }
+        .google-btn:active { 
+            background: #F8FAFC; 
+            transform: scale(0.96); 
+            border-color: #94A3B8;
+        }
 
-        /* Search & Filter Section */
-        .search-box-container { margin-bottom: 10px; }
-        .search-box-container input { margin: 0; background: white; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        /* Modern Search Box */
+        .search-box-container { 
+            position: relative; 
+            margin-bottom: 12px; 
+        }
+        .search-icon-inside {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #94A3B8;
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .search-box-container input { 
+            margin: 0; 
+            padding-left: 42px; 
+            padding-right: 36px;
+            background: white; 
+            border: 1px solid var(--border-color); 
+            border-radius: var(--radius-md); 
+            box-shadow: var(--shadow-sm); 
+            font-size: 14.5px;
+            height: 46px;
+            width: 100%;
+        }
+        .search-clear-btn {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: #E2E8F0;
+            color: #475569;
+            border: none;
+            border-radius: 50%;
+            width: 22px;
+            height: 22px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            cursor: pointer;
+            padding: 0;
+        }
+
+        /* Segmented Filter Control */
+        .filter-section {
+            margin-bottom: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
         
-        .filter-row { display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap;}
-        .filter-row select { margin: 0; flex: 1; min-width: 28%; background: white; box-shadow: 0 1px 2px rgba(0,0,0,0.05); font-size: 13px; padding: 10px;}
+        .status-segmented-control {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            background: #E2E8F0;
+            padding: 3px;
+            border-radius: 12px;
+            gap: 3px;
+        }
+        .status-segment-btn {
+            background: transparent;
+            border: none;
+            padding: 8px 4px;
+            font-size: 12.5px;
+            font-weight: 600;
+            color: #475569;
+            border-radius: 9px;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+        }
+        .status-segment-btn.active {
+            background: white;
+            color: var(--text-main);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
 
-        .count-bar { text-align: center; font-size: 13px; font-weight: 600; color: var(--primary); margin-bottom: 20px; padding: 6px 12px; background: #EEF2FF; border-radius: 20px; display: inline-block; margin-left: 50%; transform: translateX(-50%);}
+        .filter-row { 
+            display: flex; 
+            gap: 8px; 
+        }
+        .filter-select-wrapper {
+            flex: 1;
+            position: relative;
+        }
+        .filter-select-wrapper select { 
+            margin: 0; 
+            width: 100%;
+            background: white; 
+            box-shadow: var(--shadow-sm); 
+            font-size: 13px; 
+            padding: 9px 30px 9px 12px;
+            height: 40px;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            appearance: none;
+            -webkit-appearance: none;
+            font-weight: 500;
+            color: var(--text-main);
+        }
+        .filter-select-wrapper .select-arrow {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            pointer-events: none;
+            color: #94A3B8;
+        }
 
-        /* Modern Card */
-        .card { background: var(--card-bg); padding: 16px; margin-bottom: 16px; border-radius: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06); cursor: pointer; transition: transform 0.1s, box-shadow 0.1s; border: 1px solid #f1f1f1;}
-        .card:active { transform: scale(0.98); background-color: #F9FAFB; }
-        .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;}
-        .card-name { font-size: 17px; font-weight: 700; color: var(--text-main); display: flex; align-items: center;}
-        .serial-badge { background: var(--primary); color: white; width: 24px; height: 24px; display: flex; justify-content: center; align-items: center; border-radius: 50%; font-size: 12px; font-weight: 700; margin-right: 10px; }
-        .paid-badge { background: var(--success); }
+        /* Summary Stats Badge Bar */
+        .count-bar-wrapper {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 14px;
+        }
+        .count-bar { 
+            font-size: 12px; 
+            font-weight: 600; 
+            color: var(--text-muted); 
+            padding: 4px 14px; 
+            background: white; 
+            border: 1px solid var(--border-color);
+            border-radius: 20px; 
+            display: inline-flex; 
+            align-items: center; 
+            gap: 8px;
+            box-shadow: var(--shadow-sm);
+        }
+        .count-bar strong {
+            color: var(--primary);
+            font-family: 'Plus Jakarta Sans', monospace, sans-serif;
+            font-variant-numeric: tabular-nums;
+        }
 
-        .group-tag { background: #F3F4F6; padding: 4px 10px; border-radius: 12px; font-size: 11px; color: var(--text-muted); font-weight: 600;}
-        .card-details { font-size: 14px; color: var(--text-muted); margin-bottom: 12px; line-height: 1.6;}
-        .card-details strong { color: #374151; font-weight: 600;}
+        /* Modern Customer Card */
+        .card { 
+            background: var(--card-bg); 
+            padding: 16px; 
+            margin-bottom: 14px; 
+            border-radius: var(--radius-lg); 
+            box-shadow: var(--shadow-sm); 
+            cursor: pointer; 
+            transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.15s; 
+            border: 1px solid var(--border-color);
+            position: relative;
+        }
+        .card:active { 
+            transform: scale(0.985); 
+            background-color: #F8FAFC; 
+            box-shadow: none;
+        }
+        .card.paid-card {
+            border-color: rgba(16, 185, 129, 0.3);
+        }
 
-        /* Countdown & Status */
-        .countdown-box { padding: 10px 12px; border-radius: 10px; margin-bottom: 15px; font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px; border-left: 4px solid; }
-        .time-safe { background: #ECFDF5; border-left-color: var(--success); color: #065F46; }
-        .time-warning { background: #FFFBEB; border-left-color: var(--warning); color: #92400E; }
-        .time-over { background: #FEF2F2; border-left-color: var(--danger); color: #991B1B; }
-        .time-paid { background: #D1FAE5; border-left-color: #059669; color: #047857; justify-content: center; font-size: 14px;}
+        .card-header { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-bottom: 10px;
+            gap: 8px;
+        }
+        .card-name-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: 1;
+            min-width: 0;
+        }
+        .serial-badge { 
+            background: #EEF2FF; 
+            color: var(--primary); 
+            width: 28px; 
+            height: 28px; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            border-radius: 8px; 
+            font-size: 13px; 
+            font-weight: 700; 
+            flex-shrink: 0;
+            font-family: 'Plus Jakarta Sans', monospace, sans-serif;
+            font-variant-numeric: tabular-nums;
+            border: 1px solid var(--primary-border);
+        }
+        .paid-badge { 
+            background: var(--success-light); 
+            color: var(--success);
+            border-color: var(--success-border);
+        }
+        .card-name { 
+            font-size: 16.5px; 
+            font-weight: 700; 
+            color: var(--text-main); 
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .group-tag { 
+            background: #F1F5F9; 
+            padding: 4px 10px; 
+            border-radius: 8px; 
+            font-size: 11.5px; 
+            color: var(--text-muted); 
+            font-weight: 600;
+            white-space: nowrap;
+            flex-shrink: 0;
+            border: 1px solid #E2E8F0;
+        }
 
-        /* Copy Info Blocks */
-        .copy-section { display: flex; flex-direction: column; gap: 8px; }
-        .info-block { display: flex; justify-content: space-between; align-items: center; background: #F9FAFB; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--border-color); transition: 0.2s;}
-        .info-block:active { border-color: var(--primary); }
-        .info-label { font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px;}
-        .info-value { font-size: 15px; font-weight: 700; color: var(--text-main); letter-spacing: 0.5px;}
-        .copy-icon-btn { background: white; border: 1px solid var(--border-color); border-radius: 8px; width: 36px; height: 36px; display: flex; justify-content: center; align-items: center; cursor: pointer; color: var(--primary); box-shadow: 0 1px 2px rgba(0,0,0,0.05); font-size: 16px; transition: 0.2s;}
-        .copy-icon-btn:active { background: var(--primary); color: white; border-color: var(--primary); }
+        .card-details { 
+            font-size: 13px; 
+            color: var(--text-muted); 
+            margin-bottom: 12px; 
+            line-height: 1.6;
+            background: #F8FAFC;
+            padding: 8px 12px;
+            border-radius: 10px;
+            border: 1px solid #F1F5F9;
+        }
+        .card-details-row {
+            display: flex;
+            gap: 6px;
+            align-items: baseline;
+        }
+        .card-details strong { 
+            color: #334155; 
+            font-weight: 600;
+            min-width: 42px;
+        }
 
-        .fab { position: fixed; bottom: 25px; right: 25px; width: 60px; height: 60px; background: var(--primary); color: white; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 28px; box-shadow: 0 4px 10px rgba(79, 70, 229, 0.4); border: none; cursor: pointer; z-index: 90; transition: transform 0.2s; }
-        .fab:active { transform: scale(0.9); }
+        /* Countdown & Status Pill */
+        .countdown-box { 
+            padding: 8px 12px; 
+            border-radius: 10px; 
+            margin-bottom: 12px; 
+            font-size: 12.5px; 
+            font-weight: 600; 
+            display: flex; 
+            align-items: center; 
+            gap: 8px; 
+            border: 1px solid transparent;
+        }
+        .time-safe { 
+            background: var(--success-light); 
+            border-color: var(--success-border); 
+            color: #065F46; 
+        }
+        .time-warning { 
+            background: var(--warning-light); 
+            border-color: var(--warning-border); 
+            color: #92400E; 
+        }
+        .time-over { 
+            background: var(--danger-light); 
+            border-color: var(--danger-border); 
+            color: #991B1B; 
+        }
+        .time-paid { 
+            background: var(--success-light); 
+            border-color: var(--success-border); 
+            color: #065F46; 
+            justify-content: center; 
+            font-size: 13px;
+        }
+        .status-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
 
-        /* Modals */
-        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(17, 24, 39, 0.4); backdrop-filter: blur(4px); overflow: auto;}
+        /* Copy Info Modules */
+        .copy-section { 
+            display: flex; 
+            flex-direction: column; 
+            gap: 8px; 
+        }
+        .info-block { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            background: #F8FAFC; 
+            padding: 8px 12px; 
+            border-radius: var(--radius-md); 
+            border: 1px solid var(--border-color); 
+            transition: all 0.2s;
+        }
+        .info-block:active { 
+            border-color: var(--primary); 
+            background: white;
+        }
+        .info-meta {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+        .info-label { 
+            font-size: 11px; 
+            color: var(--text-muted); 
+            font-weight: 600; 
+            margin-bottom: 2px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .info-value { 
+            font-size: 14.5px; 
+            font-weight: 700; 
+            color: var(--text-main); 
+            letter-spacing: 0.5px;
+            font-family: 'Plus Jakarta Sans', monospace, sans-serif;
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .copy-icon-btn { 
+            background: white; 
+            border: 1px solid var(--border-color); 
+            border-radius: 9px; 
+            min-width: 44px; 
+            min-height: 44px; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            cursor: pointer; 
+            color: var(--primary); 
+            box-shadow: var(--shadow-sm); 
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            padding: 0;
+            flex-shrink: 0;
+        }
+        .copy-icon-btn:active { 
+            background: var(--primary); 
+            color: white; 
+            border-color: var(--primary); 
+            transform: scale(0.92);
+        }
+        .copy-icon-btn svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        /* Ergonomic Floating Action Button (FAB) */
+        .fab { 
+            position: fixed; 
+            bottom: calc(24px + env(safe-area-inset-bottom, 0px)); 
+            right: 20px; 
+            width: 56px; 
+            height: 56px; 
+            background: linear-gradient(135deg, #4F46E5, #4338CA); 
+            color: white; 
+            border-radius: 18px; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            box-shadow: var(--shadow-fab); 
+            border: none; 
+            cursor: pointer; 
+            z-index: 90; 
+            transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1); 
+        }
+        .fab:active { transform: scale(0.90); }
+        .fab svg { width: 24px; height: 24px; }
+
+        /* Form Inputs */
+        input, select { 
+            width: 100%; 
+            padding: 12px 14px; 
+            margin: 6px 0 10px; 
+            border: 1px solid var(--border-color); 
+            border-radius: 11px; 
+            font-size: 14.5px; 
+            background: #F8FAFC; 
+            transition: border 0.2s, box-shadow 0.2s, background 0.2s; 
+            outline: none;
+            color: var(--text-main);
+        }
+        input:focus, select:focus { 
+            border-color: var(--primary); 
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12); 
+            background: white;
+        }
+        .form-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #475569;
+            margin-top: 4px;
+            display: block;
+        }
+        
+        .primary-btn { 
+            background-color: var(--primary); 
+            color: white; 
+            border: none; 
+            cursor: pointer; 
+            font-weight: 600; 
+            font-size: 14.5px; 
+            padding: 13px 18px; 
+            border-radius: 12px; 
+            margin-top: 12px; 
+            width: 100%; 
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            min-height: 46px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: 0 2px 4px rgba(79, 70, 229, 0.25);
+        }
+        .primary-btn:active { 
+            background-color: var(--primary-hover); 
+            transform: scale(0.98);
+        }
+
+        /* Modern Bottom Sheet Modals */
+        .modal { 
+            display: none; 
+            position: fixed; 
+            z-index: 1000; 
+            left: 0; 
+            top: 0; 
+            width: 100%; 
+            height: 100%; 
+            background-color: rgba(15, 23, 42, 0.55); 
+            backdrop-filter: blur(6px); 
+            -webkit-backdrop-filter: blur(6px);
+            overflow-y: auto;
+        }
         .top-modal { z-index: 1100 !important; }
-        .modal-content { background-color: var(--card-bg); margin: 5% auto; margin-top: 10%; padding: 25px 20px; border-radius: 20px; width: 85%; max-width: 400px; position: relative; box-shadow: 0 10px 25px rgba(0,0,0,0.1); animation: slideUp 0.3s ease-out;}
-        @keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         
-        .close-btn { position: absolute; top: 15px; right: 15px; background: #F3F4F6; color: var(--text-muted); width: 30px; height: 30px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: bold; cursor: pointer; font-size: 16px;}
-        .section-title { font-size: 15px; font-weight: 700; color: var(--text-main); margin-bottom: 10px; margin-top: 25px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;}
+        /* Native-feeling Bottom Sheet container */
+        .modal-content { 
+            background-color: var(--card-bg); 
+            margin: 60px auto 20px; 
+            padding: 22px 20px calc(24px + env(safe-area-inset-bottom, 0px)); 
+            border-radius: var(--radius-xl); 
+            width: 90%; 
+            max-width: 440px; 
+            position: relative; 
+            box-shadow: var(--shadow-lg); 
+            animation: slideUp 0.26s cubic-bezier(0.16, 1, 0.3, 1);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+        }
+
+        @media (max-width: 640px) {
+            .modal-content {
+                margin: auto auto 0;
+                width: 100%;
+                max-width: 100%;
+                border-radius: 24px 24px 0 0;
+                padding-bottom: calc(30px + env(safe-area-inset-bottom, 0px));
+            }
+        }
+
+        @keyframes slideUp { 
+            from { transform: translateY(40px); opacity: 0; } 
+            to { transform: translateY(0); opacity: 1; } 
+        }
+
+        .sheet-drag-handle {
+            width: 36px;
+            height: 4px;
+            background: #CBD5E1;
+            border-radius: 4px;
+            margin: 0 auto 16px;
+        }
+        
+        .close-btn { 
+            position: absolute; 
+            top: 16px; 
+            right: 16px; 
+            background: #F1F5F9; 
+            color: var(--text-muted); 
+            width: 32px; 
+            height: 32px; 
+            border-radius: 50%; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            font-weight: bold; 
+            cursor: pointer; 
+            font-size: 15px;
+            transition: all 0.2s;
+        }
+        .close-btn:active {
+            background: #E2E8F0;
+            color: var(--text-main);
+        }
+
+        .section-title { 
+            font-size: 15px; 
+            font-weight: 700; 
+            color: var(--text-main); 
+            margin-bottom: 8px; 
+            margin-top: 18px; 
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
 
         /* Action Sheet Modals */
-        .action-sheet-content { background-color: var(--card-bg); margin: 40% auto; padding: 20px; border-radius: 20px; width: 75%; max-width: 320px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.15); animation: scaleIn 0.2s ease-out; }
-        @keyframes scaleIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        .action-sheet-content { 
+            background-color: var(--card-bg); 
+            margin: auto auto calc(20px + env(safe-area-inset-bottom, 0px)); 
+            padding: 20px; 
+            border-radius: var(--radius-xl); 
+            width: 90%; 
+            max-width: 360px; 
+            text-align: center; 
+            box-shadow: var(--shadow-lg); 
+            animation: scaleIn 0.22s cubic-bezier(0.16, 1, 0.3, 1); 
+            position: relative;
+        }
+        @media (max-width: 640px) {
+            .action-sheet-content {
+                margin: auto auto 0;
+                width: 100%;
+                max-width: 100%;
+                border-radius: 24px 24px 0 0;
+                padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+            }
+        }
+        @keyframes scaleIn { 
+            from { transform: scale(0.94); opacity: 0; } 
+            to { transform: scale(1); opacity: 1; } 
+        }
         
-        .action-sheet-btn { width: 100%; padding: 14px; margin: 6px 0; border: none; border-radius: 12px; font-size: 15px; font-weight: 600; cursor: pointer; transition: 0.2s;}
-        .action-edit { background-color: #EEF2FF; color: var(--primary); }
-        .action-delete { background-color: #FEF2F2; color: var(--danger); }
-        .action-success-btn { background-color: var(--success); color: white; }
-        .action-warning-btn { background-color: var(--warning); color: white; }
-        .action-cancel { background-color: #F3F4F6; color: var(--text-main); margin-top: 15px;}
+        .action-sheet-btn { 
+            width: 100%; 
+            padding: 13px; 
+            margin: 6px 0; 
+            border: none; 
+            border-radius: 12px; 
+            font-size: 14.5px; 
+            font-weight: 600; 
+            cursor: pointer; 
+            transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+            min-height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .action-sheet-btn:active { transform: scale(0.97); }
+        .action-edit { background-color: #EEF2FF; color: var(--primary); border: 1px solid var(--primary-border); }
+        .action-delete { background-color: #FEF2F2; color: var(--danger); border: 1px solid var(--danger-border); }
+        .action-success-btn { background-color: #059669; color: white; box-shadow: 0 2px 6px rgba(5, 150, 105, 0.3); }
+        .action-warning-btn { background-color: #D97706; color: white; box-shadow: 0 2px 6px rgba(217, 119, 6, 0.3); }
+        .action-cancel { background-color: #F1F5F9; color: var(--text-main); margin-top: 12px; border: 1px solid #E2E8F0; }
 
-        #toast { visibility: hidden; min-width: 220px; background-color: #1F2937; color: #fff; text-align: center; border-radius: 30px; padding: 12px 20px; position: fixed; z-index: 2000; left: 50%; bottom: 30px; font-size: 14px; font-weight: 500; box-shadow: 0 4px 12px rgba(0,0,0,0.15); opacity: 0; transform: translateX(-50%) translateY(20px); transition: all 0.3s ease; }
-        #toast.show { visibility: visible; opacity: 1; transform: translateX(-50%) translateY(0); }
+        /* Toast Feedback */
+        #toast { 
+            visibility: hidden; 
+            min-width: 220px; 
+            max-width: 85%;
+            background-color: #0F172A; 
+            color: #FFFFFF; 
+            text-align: center; 
+            border-radius: 30px; 
+            padding: 12px 22px; 
+            position: fixed; 
+            z-index: 2000; 
+            left: 50%; 
+            bottom: calc(30px + env(safe-area-inset-bottom, 0px)); 
+            font-size: 13.5px; 
+            font-weight: 600; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.25); 
+            opacity: 0; 
+            transform: translateX(-50%) translateY(20px); 
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1); 
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            pointer-events: none;
+        }
+        #toast.show { 
+            visibility: visible; 
+            opacity: 1; 
+            transform: translateX(-50%) translateY(0); 
+        }
 
-        .no-data { text-align: center; color: var(--text-muted); margin-top: 60px; font-size: 15px; line-height: 1.6; }
+        .no-data { 
+            text-align: center; 
+            color: var(--text-muted); 
+            margin: 40px 0; 
+            font-size: 14px; 
+            line-height: 1.6; 
+            background: white;
+            padding: 30px 20px;
+            border-radius: var(--radius-lg);
+            border: 1px dashed #CBD5E1;
+        }
+        .no-data-icon {
+            font-size: 36px;
+            margin-bottom: 8px;
+            display: block;
+        }
         
         /* Group Settings Accordion */
-        .manage-box { max-height: 250px; overflow-y: auto; background: white; border: 1px solid var(--border-color); border-top: none; border-radius: 0 0 12px 12px; padding: 5px; display: none; }
-        .manage-item { padding: 14px 12px; border-bottom: 1px solid #F3F4F6; font-size: 15px; font-weight: 500; cursor: pointer;}
-        .manage-item:active { background-color: #F9FAFB; }
-        .accordion-header { background: #F9FAFB; padding: 14px 16px; border-radius: 12px; font-weight: 600; cursor: pointer; display: flex; justify-content: space-between; align-items: center; color: var(--text-main); margin-top: 15px; border: 1px solid var(--border-color);}
+        .manage-box { 
+            max-height: 220px; 
+            overflow-y: auto; 
+            background: white; 
+            border: 1px solid var(--border-color); 
+            border-top: none; 
+            border-radius: 0 0 12px 12px; 
+            padding: 4px; 
+            display: none; 
+        }
+        .manage-item { 
+            padding: 12px 14px; 
+            border-bottom: 1px solid #F1F5F9; 
+            font-size: 14px; 
+            font-weight: 500; 
+            cursor: pointer;
+            border-radius: 8px;
+            transition: background 0.15s;
+        }
+        .manage-item:active { background-color: #F1F5F9; }
+        .accordion-header { 
+            background: #F8FAFC; 
+            padding: 13px 16px; 
+            border-radius: 12px; 
+            font-weight: 600; 
+            cursor: pointer; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            color: var(--text-main); 
+            margin-top: 15px; 
+            border: 1px solid var(--border-color);
+            transition: background 0.2s;
+        }
+        .accordion-header:active { background: #F1F5F9; }
     </style>
 </head>
 <body>
 
+<!-- Modern App Bar -->
 <div class="app-bar">
-    <button class="icon-btn" onclick="openModal('settingsModal')">&#8942;</button>
-    <h2>বিদ্যুৎ বিল ডিরেক্টরি</h2>
-    <div style="width: 34px;"></div>
+    <button class="icon-btn" onclick="openModal('settingsModal')" title="সেটিংস ও ব্যাকআপ" aria-label="সেটিংস">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="4" y1="21" x2="4" y2="14"></line>
+            <line x1="4" y1="10" x2="4" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12" y2="3"></line>
+            <line x1="20" y1="21" x2="20" y2="16"></line>
+            <line x1="20" y1="12" x2="20" y2="3"></line>
+            <line x1="1" y1="14" x2="7" y2="14"></line>
+            <line x1="9" y1="8" x2="15" y2="8"></line>
+            <line x1="17" y1="16" x2="23" y2="16"></line>
+        </svg>
+    </button>
+    <div class="app-bar-brand">
+        <div class="brand-icon-wrapper">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+            </svg>
+        </div>
+        <h1>বিদ্যুৎ বিল ডিরেক্টরি</h1>
+    </div>
+    <button class="account-btn" id="appBarAccountBtn" onclick="openAccountModal()" title="Google অ্যাকাউন্ট" aria-label="Google অ্যাকাউন্ট">
+        <span id="accountAvatarIcon" class="account-initial">👤</span>
+        <span class="account-badge-dot" id="appBarSyncDot"></span>
+    </button>
 </div>
 
 <div class="container">
-    <!-- Search & Filters -->
-    <div class="search-box-container">
-        <input type="text" id="searchInput" placeholder="🔍 নাম দিয়ে খুঁজুন..." onkeyup="displayCustomers()">
+    <!-- Modern Cloud Sync Widget -->
+    <div id="cloudSyncBanner" class="cloud-sync-card">
+        <div class="sync-info">
+            <div class="sync-icon-circle" id="syncIconCircle">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>
+                </svg>
+            </div>
+            <div style="min-width: 0;">
+                <div class="sync-title">
+                    <span class="sync-status-indicator" id="syncStatusIndicator"></span>
+                    <span id="syncTitle">অনলাইন সিঙ্ক বন্ধ (লোকাল মোড)</span>
+                </div>
+                <div class="sync-desc" id="syncDesc">সব মোবাইলে একই ডাটা পেতে Google দিয়ে লগইন করুন</div>
+            </div>
+        </div>
+        <button class="google-btn" id="syncActionBtn" onclick="loginWithGoogle()">
+            <svg width="15" height="15" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
+            <span id="syncActionBtnText">Google লগইন</span>
+        </button>
     </div>
-    <div class="filter-row">
-        <select id="filterGroup" onchange="displayCustomers()">
-            <option value="All">সব গোষ্ঠী</option>
-        </select>
-        <select id="filterDate" onchange="displayCustomers()">
-            <option value="All">সব তারিখ</option>
-        </select>
-        <select id="filterStatus" onchange="displayCustomers()">
+
+    <!-- Search Box -->
+    <div class="search-box-container">
+        <div class="search-icon-inside">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+        </div>
+        <input type="text" id="searchInput" placeholder="নাম অথবা নম্বর দিয়ে খুঁজুন..." oninput="handleSearchInput()">
+        <button id="searchClearBtn" class="search-clear-btn" onclick="clearSearchInput()" aria-label="ক্লিয়ার">✕</button>
+    </div>
+
+    <!-- Segmented Status Tabs & Filters -->
+    <div class="filter-section">
+        <!-- Interactive Segmented Control for Bill Status -->
+        <div class="status-segmented-control">
+            <button class="status-segment-btn active" id="segBtnAll" onclick="setStatusSegment('All')">সব গ্রাহক</button>
+            <button class="status-segment-btn" id="segBtnUnpaid" onclick="setStatusSegment('Unpaid')">বাকি আছে</button>
+            <button class="status-segment-btn" id="segBtnPaid" onclick="setStatusSegment('Paid')">পরিশোধিত</button>
+        </div>
+        
+        <!-- Hidden/Compatible filterStatus select for state synchronization -->
+        <select id="filterStatus" onchange="displayCustomers()" style="display:none;">
             <option value="All">সব বিল</option>
             <option value="Unpaid">বাকি আছে</option>
             <option value="Paid">পরিশোধিত</option>
         </select>
+
+        <div class="filter-row">
+            <div class="filter-select-wrapper">
+                <select id="filterGroup" onchange="displayCustomers()">
+                    <option value="All">সব গোষ্ঠী</option>
+                </select>
+                <div class="select-arrow">▼</div>
+            </div>
+            <div class="filter-select-wrapper">
+                <select id="filterDate" onchange="displayCustomers()">
+                    <option value="All">সব তারিখ</option>
+                </select>
+                <div class="select-arrow">▼</div>
+            </div>
+        </div>
     </div>
     
     <!-- Count Badge -->
-    <div id="customerCountBox" class="count-bar"></div>
+    <div class="count-bar-wrapper">
+        <div id="customerCountBox" class="count-bar"></div>
+    </div>
 
     <!-- Customer List -->
     <div id="customerList"></div>
 </div>
 
-<button class="fab" onclick="resetForm(); openModal('addModal')">+</button>
+<!-- Ergonomic FAB -->
+<button class="fab" onclick="resetForm(); openModal('addModal')" aria-label="নতুন গ্রাহক যোগ করুন">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="5" x2="12" y2="19"></line>
+        <line x1="5" y1="12" x2="19" y2="12"></line>
+    </svg>
+</button>
 
 <!-- Add Customer/Group Modal -->
 <div id="addModal" class="modal">
     <div class="modal-content">
+        <div class="sheet-drag-handle"></div>
         <div class="close-btn" onclick="closeModal()">✕</div>
-        <h3 class="section-title" style="margin-top:0;">নতুন গোষ্ঠী তৈরি করুন</h3>
+        
+        <h3 class="section-title" style="margin-top:0;">📁 নতুন গোষ্ঠী তৈরি করুন</h3>
         <div style="display: flex; gap: 8px;">
-            <input type="text" id="newGroup" placeholder="যেমন: শরীফ বাড়ি">
-            <button class="primary-btn" style="margin-top: 8px; width: 80px;" onclick="addGroup()">যুক্ত</button>
+            <input type="text" id="newGroup" placeholder="যেমন: শরীফ বাড়ি, ফরাজি বাড়ি">
+            <button class="primary-btn" style="margin-top: 6px; width: 84px; min-height: 42px; padding: 0;" onclick="addGroup()">যুক্ত</button>
         </div>
 
-        <h3 class="section-title" id="formTitle">নতুন গ্রাহক যোগ করুন</h3>
+        <h3 class="section-title" id="formTitle" style="margin-top: 18px;">👤 নতুন গ্রাহক যোগ করুন</h3>
         <input type="hidden" id="editCustomerId" value="">
-        <input type="text" id="cName" placeholder="গ্রাহকের নাম *">
+        
+        <span class="form-label">গ্রাহকের নাম *</span>
+        <input type="text" id="cName" placeholder="পূর্ণ নাম লিখুন">
+        
+        <span class="form-label">পিতার নাম</span>
         <input type="text" id="cFather" placeholder="পিতার নাম">
-        <input type="text" id="cMother" placeholder="মাতার নাম (ঐচ্ছিক)">
-        <input type="text" id="cAddress" placeholder="ঠিকানা">
-        <input type="number" id="cMobile" placeholder="মোবাইল নম্বর *">
-        <input type="number" id="cSms" placeholder="SMS অ্যাকাউন্ট নাম্বার *">
         
-        <input type="number" id="cDueDate" placeholder="বিলের শেষ তারিখ (যেমন: ১৮, ২৫, ৩০) *" min="1" max="31">
+        <span class="form-label">মাতার নাম (ঐচ্ছিক)</span>
+        <input type="text" id="cMother" placeholder="মাতার নাম">
         
+        <span class="form-label">ঠিকানা</span>
+        <input type="text" id="cAddress" placeholder="গ্রাম / পাড়া / বাড়ি">
+        
+        <span class="form-label">মোবাইল নম্বর *</span>
+        <input type="number" id="cMobile" placeholder="017xxxxxxxx">
+        
+        <span class="form-label">SMS অ্যাকাউন্ট / মিটার নাম্বার *</span>
+        <input type="number" id="cSms" placeholder="বিলের SMS অ্যাকাউন্ট নাম্বার">
+        
+        <span class="form-label">বিলের শেষ তারিখ (১ থেকে ৩১) *</span>
+        <input type="number" id="cDueDate" placeholder="যেমন: ১৮, ২৫, ৩০" min="1" max="31">
+        
+        <span class="form-label">গোষ্ঠী নির্বাচন করুন *</span>
         <select id="cGroup"><option value="">গোষ্ঠী নির্বাচন করুন *</option></select>
-        <button class="primary-btn" id="saveBtn" onclick="saveCustomer()">সেভ করুন</button>
+        
+        <button class="primary-btn" id="saveBtn" onclick="saveCustomer()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                <polyline points="7 3 7 8 15 8"></polyline>
+            </svg>
+            সেভ করুন
+        </button>
     </div>
 </div>
 
 <!-- Settings Modal (Backup/Restore & Group Edit) -->
 <div id="settingsModal" class="modal">
     <div class="modal-content">
+        <div class="sheet-drag-handle"></div>
         <div class="close-btn" onclick="closeModal()">✕</div>
-        <h3 style="text-align:center; color:var(--text-main); margin-top:0; font-size: 18px;">সেটিংস ও ব্যাকআপ</h3>
-        <h3 class="section-title">ডেটা ব্যাকআপ ও রিস্টোর</h3>
-        <button class="primary-btn" style="background: #10B981; margin-top: 5px; margin-bottom: 10px;" onclick="exportData()">⬇️ ডেটা ব্যাকআপ নিন</button>
-        <div style="background: #F9FAFB; padding: 12px; border-radius: 12px; border: 1px dashed #10B981; text-align: center;">
-            <span style="font-size: 13px; color: var(--text-muted); display:block; margin-bottom:8px;">রিস্টোর করতে ব্যাকআপ ফাইল সিলেক্ট করুন:</span>
-            <input type="file" id="importFile" onchange="importData(event)" accept=".json" style="padding: 8px; margin: 0; background: white; border: 1px solid #ddd;">
+        <h3 style="text-align:center; color:var(--text-main); margin-top:0; font-size: 17px; font-weight:700;">সেটিংস ও ব্যাকআপ</h3>
+        
+        <h3 class="section-title" style="margin-top: 14px;">☁️ Google ক্লাউড সিঙ্ক</h3>
+        <div id="settingsSyncCard" style="background: #F8FAFC; padding: 14px; border-radius: 14px; border: 1px solid var(--border-color); margin-bottom: 15px;">
+            <div id="settingsSyncText" style="font-size: 13.5px; color: var(--text-main); font-weight: 700; margin-bottom: 3px;">লগইন অবস্থা</div>
+            <div id="settingsSyncSubtext" style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px; line-height: 1.5;">যেকোনো মোবাইল থেকে এই জিমেইলে লগইন করলে সব তথ্য স্বয়ংক্রিয়ভাবে পেয়ে যাবেন।</div>
+            <button id="settingsSyncActionBtn" class="google-btn" style="width: 100%; justify-content: center;" onclick="handleSettingsAuthClick()">
+                <span id="settingsSyncBtnText">Google দিয়ে লগইন করুন</span>
+            </button>
+            <button id="syncAllToCloudBtn" class="primary-btn" style="background: #4F46E5; display: none; margin-top: 10px; font-size: 13px; padding: 10px;" onclick="syncAllLocalToCloud()">
+                ☁️ লোকাল সব ডেটা ক্লাউডে আপলোড করুন
+            </button>
         </div>
+
+        <h3 class="section-title">💾 ডেটা ব্যাকআপ ও রিস্টোর</h3>
+        <button class="primary-btn" style="background: #059669; margin-top: 4px; margin-bottom: 12px;" onclick="exportData()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            ডেটা ব্যাকআপ নিন (.json)
+        </button>
+        
+        <div style="background: #F8FAFC; padding: 14px; border-radius: 12px; border: 1px dashed #CBD5E1; text-align: center;">
+            <span style="font-size: 12.5px; color: var(--text-muted); display:block; margin-bottom:8px;">রিস্টোর করতে ব্যাকআপ ফাইল সিলেক্ট করুন:</span>
+            <input type="file" id="importFile" onchange="importData(event)" accept=".json" style="padding: 8px; margin: 0; background: white; border: 1px solid #E2E8F0; font-size: 12.5px;">
+        </div>
+
         <div class="accordion-header" onclick="toggleGroupList()">
             <span>📁 গোষ্ঠী ম্যানেজমেন্ট</span>
             <span id="groupToggleIcon">▼</span>
@@ -194,13 +1132,33 @@
     </div>
 </div>
 
+<!-- Account Details Modal -->
+<div id="accountModal" class="modal top-modal">
+    <div class="action-sheet-content">
+        <div class="sheet-drag-handle"></div>
+        <div class="close-btn" onclick="closeModal()">✕</div>
+        <div id="modalAccountAvatar" style="width: 60px; height: 60px; border-radius: 50%; background: #EEF2FF; color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 700; margin: 0 auto 10px; overflow: hidden; border: 2px solid var(--primary-border);">👤</div>
+        <h3 id="modalAccountName" style="margin: 0 0 4px; font-size: 17px; color: var(--text-main);">ব্যবহারকারী</h3>
+        <p id="modalAccountEmail" style="font-size: 13px; color: var(--text-muted); margin: 0 0 15px; word-break: break-all;">email@gmail.com</p>
+        
+        <div style="background: #ECFDF5; border-radius: 12px; padding: 12px; font-size: 12.5px; color: #065F46; margin-bottom: 15px; line-height: 1.5; text-align: left; border: 1px solid var(--success-border);">
+            ✅ <strong>অনলাইন সিঙ্ক সক্রিয়:</strong> আপনি যেকোনো মোবাইল থেকেই এই Google একাউন্টে লগইন করে সব তথ্য দেখতে ও পরিচালনা করতে পারবেন।
+        </div>
+
+        <button class="action-sheet-btn action-edit" style="margin-bottom: 8px;" onclick="syncAllLocalToCloud()">☁️ ক্লাউডে ডাটা রি-সিঙ্ক করুন</button>
+        <button class="action-sheet-btn action-delete" onclick="logoutGoogle()">🚪 লগআউট করুন</button>
+        <button class="action-sheet-btn action-cancel" onclick="closeModal()">বন্ধ করুন</button>
+    </div>
+</div>
+
 <!-- Action Modal for Customers (Payment, Edit, Delete) -->
 <div id="actionModal" class="modal top-modal">
     <div class="action-sheet-content">
-        <h3 id="actionCustomerName" style="margin-top:0; margin-bottom: 20px; color:var(--text-main); font-size: 18px;">গ্রাহক অপশন</h3>
+        <div class="sheet-drag-handle"></div>
+        <h3 id="actionCustomerName" style="margin-top:0; margin-bottom: 18px; color:var(--text-main); font-size: 17px; font-weight: 700;">গ্রাহক অপশন</h3>
         <button id="actionPaymentBtn" class="action-sheet-btn action-success-btn" onclick="triggerPaymentToggle()">✅ বিল পরিশোধিত (Success)</button>
-        <button class="action-sheet-btn action-edit" onclick="triggerEdit()">✏️ এডিট করুন</button>
-        <button class="action-sheet-btn action-delete" onclick="triggerDelete()">🗑️ ডিলিট করুন</button>
+        <button class="action-sheet-btn action-edit" onclick="triggerEdit()">✏️ তথ্য এডিট করুন</button>
+        <button class="action-sheet-btn action-delete" onclick="triggerDelete()">🗑️ মুছে ফেলুন</button>
         <button class="action-sheet-btn action-cancel" onclick="closeModal()">বাতিল</button>
     </div>
 </div>
@@ -208,39 +1166,160 @@
 <!-- Action Modal for Groups -->
 <div id="groupActionModal" class="modal top-modal">
     <div class="action-sheet-content">
-        <h3 id="actionGroupName" style="margin-top:0; margin-bottom: 20px; color:var(--text-main); font-size: 18px;">গোষ্ঠী অপশন</h3>
+        <div class="sheet-drag-handle"></div>
+        <h3 id="actionGroupName" style="margin-top:0; margin-bottom: 18px; color:var(--text-main); font-size: 17px; font-weight:700;">গোষ্ঠী অপশন</h3>
         <button class="action-sheet-btn action-edit" onclick="triggerGroupEdit()">✏️ নাম পরিবর্তন</button>
         <button class="action-sheet-btn action-delete" onclick="triggerGroupDelete()">🗑️ মুছে ফেলুন</button>
         <button class="action-sheet-btn action-cancel" onclick="closeModal()">বাতিল</button>
     </div>
 </div>
 
+<!-- Confirm Modal (Replacement for window.confirm) -->
+<div id="confirmModal" class="modal top-modal">
+    <div class="action-sheet-content">
+        <div class="sheet-drag-handle"></div>
+        <h3 id="confirmModalTitle" style="margin-top:0; margin-bottom: 10px; color:var(--text-main); font-size: 17px; font-weight: 700;">নিশ্চিত করুন</h3>
+        <p id="confirmModalMsg" style="font-size: 13.5px; color: var(--text-muted); margin-bottom: 18px; line-height: 1.5;"></p>
+        <button id="confirmModalOkBtn" class="action-sheet-btn action-delete">মুছে ফেলুন</button>
+        <button class="action-sheet-btn action-cancel" onclick="closeModal()">বাতিল</button>
+    </div>
+</div>
+
+<!-- Prompt Modal (Replacement for window.prompt) -->
+<div id="promptModal" class="modal top-modal">
+    <div class="modal-content" style="max-width: 360px;">
+        <div class="sheet-drag-handle"></div>
+        <div class="close-btn" onclick="closeModal()">✕</div>
+        <h3 id="promptModalTitle" class="section-title" style="margin-top:0;">নাম পরিবর্তন</h3>
+        <input type="text" id="promptInput" placeholder="গোষ্ঠীর নাম লিখুন" style="margin-top: 10px; margin-bottom: 15px;">
+        <button id="promptModalOkBtn" class="primary-btn" style="margin-top:0;">সংরক্ষণ করুন</button>
+    </div>
+</div>
+
 <div id="toast">Copied!</div>
 
-<script>
+<script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js';
+    import { 
+        getAuth, 
+        GoogleAuthProvider, 
+        signInWithPopup, 
+        signOut, 
+        onAuthStateChanged 
+    } from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js';
+    import { 
+        getFirestore, 
+        doc, 
+        collection, 
+        setDoc, 
+        deleteDoc, 
+        onSnapshot, 
+        getDocFromServer 
+    } from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js';
+
+    // Firebase Configuration
+    let firebaseConfig = {
+        projectId: "striking-gist-mjq9c",
+        appId: "1:1011577606183:web:4ef4336254599f3afc3e02",
+        apiKey: "AIzaSyD9tzxDHCM1J_IY2TNxOljAOfilyAoepfg",
+        authDomain: "striking-gist-mjq9c.firebaseapp.com",
+        firestoreDatabaseId: "ai-studio-meternumber-d8e7d7f5-6ef8-422d-bd6e-76a4d2927f85",
+        storageBucket: "striking-gist-mjq9c.firebasestorage.app",
+        messagingSenderId: "1011577606183",
+        measurementId: "",
+        oAuthClientId: "1011577606183-312uinu0thr1cuad9auscat5ihdlde2u.apps.googleusercontent.com"
+    };
+
+    try {
+        const configResp = await fetch('./firebase-applet-config.json');
+        if (configResp.ok) {
+            const externalConfig = await configResp.json();
+            firebaseConfig = { ...firebaseConfig, ...externalConfig };
+        }
+    } catch (e) {
+        console.warn("Using bundled Firebase configuration", e);
+    }
+
+    const app = initializeApp(firebaseConfig);
+    export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId); /* CRITICAL: The app will break without this line */
+    export const auth = getAuth(app);
+
+    // Validate Connection to Firestore (Per SKILL.md)
+    async function testConnection() {
+        try {
+            await getDocFromServer(doc(db, 'test', 'connection'));
+        } catch (error) {
+            if (error instanceof Error && error.message.includes('the client is offline')) {
+                console.error("Please check your Firebase configuration.");
+            }
+        }
+    }
+    testConnection();
+
+    // Standardized Error Handler (Per SKILL.md)
+    const OperationType = {
+        CREATE: 'create',
+        UPDATE: 'update',
+        DELETE: 'delete',
+        LIST: 'list',
+        GET: 'get',
+        WRITE: 'write',
+    };
+
+    function handleFirestoreError(error, operationType, path) {
+        const errInfo = {
+            error: error instanceof Error ? error.message : String(error),
+            operationType,
+            path,
+            authInfo: {
+                userId: auth.currentUser?.uid || null,
+                email: auth.currentUser?.email || null,
+                emailVerified: auth.currentUser?.emailVerified || null,
+                isAnonymous: auth.currentUser?.isAnonymous || null,
+                tenantId: auth.currentUser?.tenantId || null,
+                providerInfo: auth.currentUser?.providerData?.map(provider => ({
+                    providerId: provider.providerId,
+                    email: provider.email,
+                })) || []
+            }
+        };
+        console.error('Firestore Error: ', JSON.stringify(errInfo));
+        throw new Error(JSON.stringify(errInfo));
+    }
+
+    /* ==========================================
+       Application State
+       ========================================== */
     let groups = ['শরীফ বাড়ি', 'ফরাজি বাড়ি'];
     let customers = [];
     let selectedCustomerId = null; 
     let selectedGroupIndex = null;
     let selectedGroupName = "";
+    let currentUser = null;
+    let unsubscribeCustomers = null;
+    let unsubscribeGroups = null;
 
     function getCurrentMonthStr() {
         let d = new Date();
         return d.getFullYear() + "-" + (d.getMonth() + 1);
     }
 
-    function loadData() {
+    function loadLocalData() {
         let savedGroups = localStorage.getItem('billGroups');
         let savedCustomers = localStorage.getItem('billCustomers');
-        if (savedGroups) groups = JSON.parse(savedGroups);
+        if (savedGroups) {
+            try { groups = JSON.parse(savedGroups); } catch(e){}
+        }
         if (savedCustomers) {
-            customers = JSON.parse(savedCustomers);
-            customers.forEach(c => { 
-                if(c.mobile === undefined) c.mobile = ""; 
-                if(c.mother === undefined) c.mother = ""; 
-                if(c.dueDate === undefined) c.dueDate = ""; 
-                if(c.lastPaidMonth === undefined) c.lastPaidMonth = "";
-            });
+            try {
+                customers = JSON.parse(savedCustomers);
+                customers.forEach(c => { 
+                    if(c.mobile === undefined) c.mobile = ""; 
+                    if(c.mother === undefined) c.mother = ""; 
+                    if(c.dueDate === undefined) c.dueDate = ""; 
+                    if(c.lastPaidMonth === undefined) c.lastPaidMonth = "";
+                });
+            } catch(e){}
         }
         updateUI();
     }
@@ -250,20 +1329,287 @@
         localStorage.setItem('billCustomers', JSON.stringify(customers));
     }
 
-    function updateUI() { updateDropdowns(); displayCustomers(); renderSettingsGroupList(); }
+    function updateUI() { 
+        updateDropdowns(); 
+        displayCustomers(); 
+        renderSettingsGroupList(); 
+    }
+
+    function getGroupId(groupName) {
+        let slug = encodeURIComponent(groupName).replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 50);
+        let hash = Math.abs(groupName.split('').reduce((a, b) => { a = ((a << 5) - a) + b.charCodeAt(0); return a & a; }, 0));
+        return `grp_${slug}_${hash}`;
+    }
 
     /* ==========================================
-       মোবাইল Back Button সাপোর্ট (নিখুঁত লজিক)
+       Cloud Sync Methods
        ========================================== */
-    let activeModal = null; // কোন মডেলটি খোলা আছে তা ট্র্যাক করা
+    async function saveCustomerToFirestore(c) {
+        if (!currentUser) return;
+        const custId = String(c.id);
+        const path = `users/${currentUser.uid}/customers/${custId}`;
+        try {
+            const payload = {
+                id: custId,
+                name: String(c.name || '').slice(0, 100),
+                father: String(c.father || '').slice(0, 100),
+                mother: String(c.mother || '').slice(0, 100),
+                address: String(c.address || '').slice(0, 200),
+                mobile: String(c.mobile || '').slice(0, 30),
+                sms: String(c.sms || '').slice(0, 50),
+                dueDate: String(c.dueDate || '').slice(0, 10),
+                group: String(c.group || '').slice(0, 100),
+                lastPaidMonth: String(c.lastPaidMonth || '').slice(0, 20),
+                userId: currentUser.uid
+            };
+            await setDoc(doc(db, 'users', currentUser.uid, 'customers', custId), payload);
+        } catch (err) {
+            handleFirestoreError(err, OperationType.WRITE, path);
+        }
+    }
+
+    async function deleteCustomerFromFirestore(id) {
+        if (!currentUser) return;
+        const custId = String(id);
+        const path = `users/${currentUser.uid}/customers/${custId}`;
+        try {
+            await deleteDoc(doc(db, 'users', currentUser.uid, 'customers', custId));
+        } catch (err) {
+            handleFirestoreError(err, OperationType.DELETE, path);
+        }
+    }
+
+    async function saveGroupToFirestore(groupName) {
+        if (!currentUser) return;
+        const gId = getGroupId(groupName);
+        const path = `users/${currentUser.uid}/groups/${gId}`;
+        try {
+            await setDoc(doc(db, 'users', currentUser.uid, 'groups', gId), {
+                id: gId,
+                name: String(groupName).slice(0, 100),
+                userId: currentUser.uid
+            });
+        } catch (err) {
+            handleFirestoreError(err, OperationType.WRITE, path);
+        }
+    }
+
+    async function deleteGroupFromFirestore(groupName) {
+        if (!currentUser) return;
+        const gId = getGroupId(groupName);
+        const path = `users/${currentUser.uid}/groups/${gId}`;
+        try {
+            await deleteDoc(doc(db, 'users', currentUser.uid, 'groups', gId));
+        } catch (err) {
+            handleFirestoreError(err, OperationType.DELETE, path);
+        }
+    }
+
+    async function syncAllLocalToCloud() {
+        if (!currentUser) {
+            loginWithGoogle();
+            return;
+        }
+        showToast("সব ডাটা ক্লাউডে সিঙ্ক হচ্ছে...");
+        try {
+            for (const g of groups) {
+                await saveGroupToFirestore(g);
+            }
+            for (const c of customers) {
+                await saveCustomerToFirestore(c);
+            }
+            showToast("✅ সফলভাবে ক্লাউডে সিঙ্ক হয়েছে! যে কোনো মোবাইলে দেখতে পাবেন।");
+            closeModal();
+        } catch (e) {
+            showToast("সিঙ্ক করতে সমস্যা হয়েছে!");
+        }
+    }
+
+    /* ==========================================
+       Firebase Authentication & Listeners
+       ========================================== */
+    function updateAuthUI(user) {
+        const syncCard = document.getElementById('cloudSyncBanner');
+        const syncIndicator = document.getElementById('syncStatusIndicator');
+        const syncTitle = document.getElementById('syncTitle');
+        const syncDesc = document.getElementById('syncDesc');
+        const syncActionBtn = document.getElementById('syncActionBtn');
+        const syncActionBtnText = document.getElementById('syncActionBtnText');
+        const avatarIcon = document.getElementById('accountAvatarIcon');
+        const appBarSyncDot = document.getElementById('appBarSyncDot');
+        const settingsText = document.getElementById('settingsSyncText');
+        const settingsSubtext = document.getElementById('settingsSyncSubtext');
+        const settingsBtnText = document.getElementById('settingsSyncBtnText');
+        const syncAllBtn = document.getElementById('syncAllToCloudBtn');
+
+        if (user) {
+            syncCard.classList.add('synced');
+            syncIndicator.className = "sync-status-indicator active";
+            syncTitle.innerText = "অনলাইন ক্লাউড সিঙ্ক সক্রিয়";
+            syncDesc.innerText = `লগইন আছেন: ${user.email} (সব মোবাইলে সিঙ্ক হচ্ছে)`;
+            syncActionBtn.onclick = openAccountModal;
+            syncActionBtnText.innerText = "অ্যাকাউন্ট";
+            appBarSyncDot.className = "account-badge-dot show";
+            
+            if (user.photoURL) {
+                avatarIcon.innerHTML = `<img src="${user.photoURL}" class="account-avatar-img" alt="User">`;
+            } else {
+                let initial = (user.displayName || user.email || 'U').charAt(0).toUpperCase();
+                avatarIcon.innerText = initial;
+            }
+
+            settingsText.innerText = `লগইন আছেন: ${user.displayName || user.email}`;
+            settingsSubtext.innerText = "আপনার সব গ্রাহক ও বিলের তথ্য ক্লাউডে নিরাপদে সংরক্ষিত আছে।";
+            settingsBtnText.innerText = "অ্যাকাউন্ট পরিচালনা / লগআউট";
+            syncAllBtn.style.display = "flex";
+        } else {
+            syncCard.classList.remove('synced');
+            syncIndicator.className = "sync-status-indicator";
+            syncTitle.innerText = "অনলাইন সিঙ্ক বন্ধ (লোকাল মোড)";
+            syncDesc.innerText = "সব মোবাইলে একই ডাটা পেতে Google দিয়ে লগইন করুন";
+            syncActionBtn.onclick = loginWithGoogle;
+            syncActionBtnText.innerText = "Google লগইন";
+            appBarSyncDot.className = "account-badge-dot";
+            avatarIcon.innerText = "👤";
+
+            settingsText.innerText = "লগইন করা নেই (লোকাল মোড)";
+            settingsSubtext.innerText = "যেকোনো মোবাইল থেকে এই একই তথ্য পেতে Google দিয়ে লগইন করুন।";
+            settingsBtnText.innerText = "Google দিয়ে লগইন করুন";
+            syncAllBtn.style.display = "none";
+        }
+    }
+
+    async function loginWithGoogle() {
+        try {
+            const provider = new GoogleAuthProvider();
+            provider.setCustomParameters({ prompt: 'select_account' });
+            showToast("Google লগইন উইন্ডো খোলা হচ্ছে...");
+            await signInWithPopup(auth, provider);
+        } catch (error) {
+            console.error("Google Sign-In Error:", error);
+            if (error.code === 'auth/popup-closed-by-user') {
+                showToast("লগইন উইন্ডো বন্ধ করা হয়েছে");
+            } else {
+                showToast("লগইন হতে সমস্যা হয়েছে: " + (error.message || ""));
+            }
+        }
+    }
+
+    async function logoutGoogle() {
+        try {
+            await signOut(auth);
+            closeModal();
+            showToast("লগআউট করা হয়েছে");
+        } catch (error) {
+            showToast("লগআউটে সমস্যা হয়েছে");
+        }
+    }
+
+    function openAccountModal() {
+        if (!currentUser) {
+            loginWithGoogle();
+            return;
+        }
+        const avatar = document.getElementById('modalAccountAvatar');
+        if (currentUser.photoURL) {
+            avatar.innerHTML = `<img src="${currentUser.photoURL}" style="width:100%; height:100%; object-fit:cover;" alt="User">`;
+        } else {
+            avatar.innerText = (currentUser.displayName || currentUser.email || 'U').charAt(0).toUpperCase();
+        }
+        document.getElementById('modalAccountName').innerText = currentUser.displayName || 'সম্মানিত ব্যবহারকারী';
+        document.getElementById('modalAccountEmail').innerText = currentUser.email || '';
+        openModal('accountModal');
+    }
+
+    function handleSettingsAuthClick() {
+        if (currentUser) {
+            closeModal();
+            openAccountModal();
+        } else {
+            loginWithGoogle();
+        }
+    }
+
+    onAuthStateChanged(auth, async (user) => {
+        currentUser = user;
+        updateAuthUI(user);
+
+        if (unsubscribeCustomers) { unsubscribeCustomers(); unsubscribeCustomers = null; }
+        if (unsubscribeGroups) { unsubscribeGroups(); unsubscribeGroups = null; }
+
+        if (user) {
+            showToast(`স্বাগতম! অনলাইন ক্লাউড সিঙ্ক চালু হয়েছে`);
+
+            // Listen to groups in real-time across devices
+            const groupsPath = `users/${user.uid}/groups`;
+            unsubscribeGroups = onSnapshot(collection(db, 'users', user.uid, 'groups'), (snapshot) => {
+                const cloudGroups = [];
+                snapshot.forEach(docSnap => {
+                    const data = docSnap.data();
+                    if (data.name && !cloudGroups.includes(data.name)) {
+                        cloudGroups.push(data.name);
+                    }
+                });
+                if (cloudGroups.length > 0) {
+                    groups = cloudGroups;
+                    saveData();
+                    updateUI();
+                } else if (groups.length > 0) {
+                    for (const g of groups) {
+                        saveGroupToFirestore(g);
+                    }
+                }
+            }, (error) => {
+                handleFirestoreError(error, OperationType.GET, groupsPath);
+            });
+
+            // Listen to customers in real-time across devices
+            const custPath = `users/${user.uid}/customers`;
+            unsubscribeCustomers = onSnapshot(collection(db, 'users', user.uid, 'customers'), (snapshot) => {
+                const cloudCustomers = [];
+                snapshot.forEach(docSnap => {
+                    const data = docSnap.data();
+                    cloudCustomers.push({
+                        id: parseFloat(data.id) || data.id,
+                        name: data.name,
+                        father: data.father || '',
+                        mother: data.mother || '',
+                        address: data.address || '',
+                        mobile: data.mobile || '',
+                        sms: data.sms || '',
+                        dueDate: data.dueDate || '',
+                        group: data.group || '',
+                        lastPaidMonth: data.lastPaidMonth || ''
+                    });
+                });
+
+                if (cloudCustomers.length > 0) {
+                    customers = cloudCustomers;
+                    saveData();
+                    updateUI();
+                } else if (customers.length > 0) {
+                    for (const c of customers) {
+                        saveCustomerToFirestore(c);
+                    }
+                }
+            }, (error) => {
+                handleFirestoreError(error, OperationType.GET, custPath);
+            });
+        } else {
+            loadLocalData();
+        }
+    });
+
+    /* ==========================================
+       মোবাইল Back Button সাপোর্ট ও Modal কন্ট্রোল
+       ========================================== */
+    let activeModal = null;
 
     function openModal(modalId) {
-        document.getElementById(modalId).style.display = 'block';
+        document.getElementById(modalId).style.display = 'flex';
         activeModal = modalId;
-        // হিস্ট্রিতে পুশ করা, যাতে ব্যাক বাটনে চাপলে পেজ থেকে বের না হয়
         window.history.pushState({ modalOpen: true }, "", "#" + modalId);
         
-        // সেটিং ওপেন করলে লিস্ট বন্ধ রাখা
         if(modalId === 'settingsModal') {
             document.getElementById('settingsGroupList').style.display = 'none';
             document.getElementById('groupHintText').style.display = 'none';
@@ -272,30 +1618,96 @@
     }
 
     function closeModal() {
-        if (activeModal) {
-            window.history.back(); // এটি popstate ট্রিগার করবে
-        } else {
-            // সেফটি ফলব্যাক
-            document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
+        document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
+        if (activeModal && window.history.state && window.history.state.modalOpen) {
+            window.history.back();
         }
+        activeModal = null;
     }
 
     window.addEventListener('popstate', function(event) {
-        // ব্যাক বাটন চাপলে সব মডেল হাইড করে দেবে
         document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
         activeModal = null;
     });
 
-    // কালো অংশে ক্লিক করলে মডেল বন্ধ
     window.onclick = function(event) { 
         if (event.target.classList.contains('modal')) {
             closeModal();
         }
     }
-    /* ========================================== */
 
+    window.alert = function(msg) {
+        showToast(msg);
+    };
+
+    function showConfirmDialog(title, message, okText, onOk) {
+        document.getElementById('confirmModalTitle').innerText = title;
+        document.getElementById('confirmModalMsg').innerText = message;
+        let okBtn = document.getElementById('confirmModalOkBtn');
+        okBtn.innerText = okText || 'মুছে ফেলুন';
+        okBtn.onclick = function() {
+            closeModal();
+            if (typeof onOk === 'function') onOk();
+        };
+        openModal('confirmModal');
+    }
+
+    function showPromptDialog(title, initialValue, onOk) {
+        document.getElementById('promptModalTitle').innerText = title;
+        let input = document.getElementById('promptInput');
+        input.value = initialValue || '';
+        let okBtn = document.getElementById('promptModalOkBtn');
+        okBtn.onclick = function() {
+            let val = input.value.trim();
+            closeModal();
+            if (typeof onOk === 'function') onOk(val);
+        };
+        openModal('promptModal');
+        setTimeout(() => input.focus(), 200);
+    }
+
+    /* ==========================================
+       Search & Segment Controls
+       ========================================== */
+    function setStatusSegment(status) {
+        document.getElementById('segBtnAll').classList.remove('active');
+        document.getElementById('segBtnUnpaid').classList.remove('active');
+        document.getElementById('segBtnPaid').classList.remove('active');
+        
+        if (status === 'All') document.getElementById('segBtnAll').classList.add('active');
+        if (status === 'Unpaid') document.getElementById('segBtnUnpaid').classList.add('active');
+        if (status === 'Paid') document.getElementById('segBtnPaid').classList.add('active');
+        
+        document.getElementById('filterStatus').value = status;
+        displayCustomers();
+    }
+
+    function handleSearchInput() {
+        let input = document.getElementById('searchInput');
+        let clearBtn = document.getElementById('searchClearBtn');
+        if (input.value.trim().length > 0) {
+            clearBtn.style.display = 'flex';
+        } else {
+            clearBtn.style.display = 'none';
+        }
+        displayCustomers();
+    }
+
+    function clearSearchInput() {
+        let input = document.getElementById('searchInput');
+        input.value = '';
+        document.getElementById('searchClearBtn').style.display = 'none';
+        input.focus();
+        displayCustomers();
+    }
+
+    /* ==========================================
+       গ্রাহক ও গোষ্ঠী পরিচালনা
+       ========================================== */
     function toggleGroupList() {
-        let list = document.getElementById('settingsGroupList'), hint = document.getElementById('groupHintText'), icon = document.getElementById('groupToggleIcon');
+        let list = document.getElementById('settingsGroupList'), 
+            hint = document.getElementById('groupHintText'), 
+            icon = document.getElementById('groupToggleIcon');
         if (list.style.display === 'none' || list.style.display === '') {
             list.style.display = 'block'; hint.style.display = 'block'; icon.innerText = '▲';
         } else {
@@ -307,7 +1719,10 @@
         let cGroup = document.getElementById('cGroup'), filterGroup = document.getElementById('filterGroup');
         cGroup.innerHTML = '<option value="">গোষ্ঠী নির্বাচন করুন *</option>';
         filterGroup.innerHTML = '<option value="All">সব গোষ্ঠী</option>';
-        groups.forEach(g => { cGroup.innerHTML += `<option value="${g}">${g}</option>`; filterGroup.innerHTML += `<option value="${g}">${g}</option>`; });
+        groups.forEach(g => { 
+            cGroup.innerHTML += `<option value="${g}">${g}</option>`; 
+            filterGroup.innerHTML += `<option value="${g}">${g}</option>`; 
+        });
 
         let filterDate = document.getElementById('filterDate');
         filterDate.innerHTML = '<option value="All">সব তারিখ</option>';
@@ -323,14 +1738,15 @@
         groupList.innerHTML = '';
         groups.forEach((g, index) => {
             let item = document.createElement('div');
-            item.className = 'manage-item'; item.innerText = g;
+            item.className = 'manage-item'; 
+            item.innerText = g;
             let pressTimer;
             const startPress = () => {
                 pressTimer = setTimeout(() => {
                     selectedGroupIndex = index; selectedGroupName = g;
                     document.getElementById('actionGroupName').innerText = g;
                     openModal('groupActionModal');
-                }, 600);
+                }, 500);
             };
             const cancelPress = () => clearTimeout(pressTimer);
             item.addEventListener('mousedown', startPress); item.addEventListener('mouseup', cancelPress); item.addEventListener('mouseleave', cancelPress);
@@ -342,37 +1758,66 @@
     function triggerGroupEdit() {
         closeModal();
         setTimeout(() => {
-            let newName = prompt("গোষ্ঠীর নতুন নাম লিখুন:", selectedGroupName);
-            if (newName !== null) {
-                newName = newName.trim();
-                if (newName !== "" && newName !== selectedGroupName) {
-                    if(groups.includes(newName)) { alert("এই নামটি আগেই যুক্ত করা আছে!"); return; }
+            showPromptDialog("গোষ্ঠীর নাম পরিবর্তন", selectedGroupName, async (newName) => {
+                if (newName && newName !== selectedGroupName) {
+                    if (groups.includes(newName)) { showToast("এই নামটি আগেই যুক্ত করা আছে!"); return; }
+                    let oldName = selectedGroupName;
                     groups[selectedGroupIndex] = newName;
-                    customers.forEach(c => { if(c.group === selectedGroupName) c.group = newName; });
-                    saveData(); updateUI(); showToast("নাম পরিবর্তন হয়েছে!");
+                    customers.forEach(c => { if(c.group === oldName) c.group = newName; });
+                    saveData(); 
+                    updateUI(); 
+                    
+                    if (currentUser) {
+                        await deleteGroupFromFirestore(oldName);
+                        await saveGroupToFirestore(newName);
+                        customers.filter(c => c.group === newName).forEach(c => saveCustomerToFirestore(c));
+                    }
+                    showToast("নাম পরিবর্তন ও সিঙ্ক হয়েছে!");
                 }
-            }
-        }, 300);
+            });
+        }, 150);
     }
 
     function triggerGroupDelete() {
         closeModal();
         setTimeout(() => {
-            if(confirm(`আপনি কি '${selectedGroupName}' মুছে ফেলতে চান?`)) {
-                groups.splice(selectedGroupIndex, 1); saveData(); updateUI(); showToast("গোষ্ঠী মুছে ফেলা হয়েছে!");
-            }
-        }, 300);
+            showConfirmDialog(
+                "গোষ্ঠী মুছুন",
+                `আপনি কি নিশ্চিতভাবে '${selectedGroupName}' গোষ্ঠী মুছে ফেলতে চান?`,
+                "মুছে ফেলুন",
+                async () => {
+                    let deletedName = selectedGroupName;
+                    groups.splice(selectedGroupIndex, 1); 
+                    saveData(); 
+                    updateUI(); 
+                    if (currentUser) {
+                        await deleteGroupFromFirestore(deletedName);
+                    }
+                    showToast("গোষ্ঠী মুছে ফেলা হয়েছে!");
+                }
+            );
+        }, 150);
     }
 
-    function addGroup() {
+    async function addGroup() {
         let newGroup = document.getElementById('newGroup').value.trim();
         if (newGroup && !groups.includes(newGroup)) {
-            groups.push(newGroup); saveData(); updateUI();
-            document.getElementById('newGroup').value = ''; showToast("নতুন গোষ্ঠী যুক্ত হয়েছে");
-        } else { alert('সঠিক নাম দিন।'); }
+            groups.push(newGroup); 
+            saveData(); 
+            updateUI();
+            if (currentUser) {
+                await saveGroupToFirestore(newGroup);
+            }
+            document.getElementById('newGroup').value = ''; 
+            showToast("নতুন গোষ্ঠী যুক্ত ও সিঙ্ক হয়েছে");
+        } else if (groups.includes(newGroup)) {
+            showToast("এই গোষ্ঠী আগেই যুক্ত করা আছে!");
+        } else {
+            showToast('সঠিক নাম দিন।');
+        }
     }
 
-    function saveCustomer() {
+    async function saveCustomer() {
         let id = document.getElementById('editCustomerId').value, 
             name = document.getElementById('cName').value.trim(), 
             father = document.getElementById('cFather').value.trim(), 
@@ -385,39 +1830,52 @@
 
         if (name && mobile && sms && dueDate && group) {
             if (parseInt(dueDate) < 1 || parseInt(dueDate) > 31) {
-                alert("দয়া করে ১ থেকে ৩১ এর মধ্যে একটি সঠিক তারিখ দিন।");
+                showToast("দয়া করে ১ থেকে ৩১ এর মধ্যে একটি সঠিক তারিখ দিন।");
                 return;
             }
-            if(id) {
+            let targetCustomer = null;
+            if (id) {
                 let index = customers.findIndex(c => String(c.id) === String(id));
-                if(index !== -1) {
+                if (index !== -1) {
                     let oldPaidMonth = customers[index].lastPaidMonth;
-                    customers[index] = { id: parseFloat(id), name, father, mother, address, mobile, sms, dueDate, group, lastPaidMonth: oldPaidMonth };
+                    targetCustomer = { id: parseFloat(id), name, father, mother, address, mobile, sms, dueDate, group, lastPaidMonth: oldPaidMonth };
+                    customers[index] = targetCustomer;
                 }
                 showToast("তথ্য আপডেট হয়েছে!");
             } else {
-                customers.push({ id: Date.now(), name, father, mother, address, mobile, sms, dueDate, group, lastPaidMonth: "" });
+                targetCustomer = { id: Date.now(), name, father, mother, address, mobile, sms, dueDate, group, lastPaidMonth: "" };
+                customers.push(targetCustomer);
                 showToast("গ্রাহক যোগ করা হয়েছে!");
             }
-            saveData(); updateUI(); closeModal();
+            saveData(); 
+            updateUI(); 
+            closeModal();
+
+            if (currentUser && targetCustomer) {
+                await saveCustomerToFirestore(targetCustomer);
+            }
         } else { 
-            alert('দয়া করে নাম, মোবাইল নম্বর, SMS অ্যাকাউন্ট, বিলের শেষ তারিখ এবং গোষ্ঠী অবশ্যই পূরণ করুন।'); 
+            showToast('দয়া করে নাম, মোবাইল নম্বর, SMS অ্যাকাউন্ট, বিলের শেষ তারিখ এবং গোষ্ঠী পূরণ করুন।'); 
         }
     }
 
-    function triggerPaymentToggle() {
+    async function triggerPaymentToggle() {
         closeModal();
         let c = customers.find(item => item.id === selectedCustomerId);
-        if(c) {
+        if (c) {
             let currentMonth = getCurrentMonthStr();
-            if(c.lastPaidMonth === currentMonth) {
+            if (c.lastPaidMonth === currentMonth) {
                 c.lastPaidMonth = "";
                 showToast("বিল আনপেইড মার্ক করা হয়েছে!");
             } else {
                 c.lastPaidMonth = currentMonth;
                 showToast("✅ বিল পরিশোধিত (Success)!");
             }
-            saveData(); updateUI();
+            saveData(); 
+            updateUI();
+            if (currentUser) {
+                await saveCustomerToFirestore(c);
+            }
         }
     }
 
@@ -425,7 +1883,7 @@
         closeModal();
         setTimeout(() => {
             let c = customers.find(item => item.id === selectedCustomerId);
-            if(c) {
+            if (c) {
                 document.getElementById('editCustomerId').value = c.id; 
                 document.getElementById('cName').value = c.name; 
                 document.getElementById('cFather').value = c.father; 
@@ -437,7 +1895,14 @@
                 document.getElementById('cGroup').value = c.group;
                 
                 document.getElementById('formTitle').innerText = "গ্রাহকের তথ্য আপডেট করুন"; 
-                document.getElementById('saveBtn').innerText = "আপডেট করুন"; 
+                document.getElementById('saveBtn').innerHTML = `
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                        <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                        <polyline points="7 3 7 8 15 8"></polyline>
+                    </svg>
+                    আপডেট করুন
+                `; 
                 openModal('addModal'); 
             }
         }, 150);
@@ -445,11 +1910,25 @@
 
     function triggerDelete() {
         closeModal();
+        let c = customers.find(item => item.id === selectedCustomerId);
+        let custName = c ? c.name : "এই গ্রাহক";
+        let targetId = selectedCustomerId;
         setTimeout(() => {
-            if(confirm("এই গ্রাহকের তথ্য মুছে ফেলবেন?")) {
-                customers = customers.filter(c => c.id !== selectedCustomerId); saveData(); updateUI(); showToast("গ্রাহক মুছে ফেলা হয়েছে!");
-            }
-        }, 300);
+            showConfirmDialog(
+                "গ্রাহকের তথ্য মুছুন",
+                `আপনি কি নিশ্চিতভাবে '${custName}'-এর তথ্য মুছে ফেলতে চান?`,
+                "মুছে ফেলুন",
+                async () => {
+                    customers = customers.filter(item => item.id !== targetId);
+                    saveData();
+                    updateUI();
+                    if (currentUser) {
+                        await deleteCustomerFromFirestore(targetId);
+                    }
+                    showToast("গ্রাহক মুছে ফেলা হয়েছে!");
+                }
+            );
+        }, 150);
     }
 
     function resetForm() {
@@ -463,47 +1942,134 @@
         document.getElementById('cDueDate').value = ''; 
         document.getElementById('cGroup').value = '';
         document.getElementById('formTitle').innerText = "নতুন গ্রাহক যোগ করুন"; 
-        document.getElementById('saveBtn').innerText = "সেভ করুন";
+        document.getElementById('saveBtn').innerHTML = `
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                <polyline points="7 3 7 8 15 8"></polyline>
+            </svg>
+            সেভ করুন
+        `;
     }
 
     function exportData() {
         const data = { groups: groups, customers: customers };
-        const blob = new Blob([JSON.stringify(data)], { type: "application/json" });
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
         const url = URL.createObjectURL(blob);
-        const a = document.createElement('a'); a.href = url; a.download = 'বিদ্যুৎ_বিল_ব্যাকআপ.json'; a.click();
-        URL.revokeObjectURL(url); showToast("ব্যাকআপ ডাউনলোড হয়েছে!");
+        const a = document.createElement('a'); 
+        a.href = url; 
+        a.download = 'বিদ্যুৎ_বিল_ব্যাকআপ.json'; 
+        a.click();
+        URL.revokeObjectURL(url); 
+        showToast("ব্যাকআপ ডাউনলোড হয়েছে!");
     }
 
-    function importData(event) {
+    async function importData(event) {
         const file = event.target.files[0];
         if (!file) return;
         const reader = new FileReader();
-        reader.onload = function(e) {
+        reader.onload = async function(e) {
             try {
                 const data = JSON.parse(e.target.result);
-                if (data.groups && data.customers) { groups = data.groups; customers = data.customers; saveData(); updateUI(); showToast("রিস্টোর সফল হয়েছে!"); closeModal(); } else { alert("ভুল ফাইল!"); }
-            } catch (err) { alert("ফাইল পড়তে সমস্যা হয়েছে!"); }
+                if (data.groups && data.customers) { 
+                    groups = data.groups; 
+                    customers = data.customers; 
+                    saveData(); 
+                    updateUI(); 
+                    
+                    if (currentUser) {
+                        showToast("ক্লাউডে আপলোড ও সিঙ্ক হচ্ছে...");
+                        for (const g of groups) {
+                            await saveGroupToFirestore(g);
+                        }
+                        for (const c of customers) {
+                            await saveCustomerToFirestore(c);
+                        }
+                        showToast("✅ ব্যাকআপ ডাটা সফলভাবে ক্লাউডে সেভ হয়েছে এবং সব মোবাইলে সিঙ্ক হয়েছে!");
+                    } else {
+                        showToast("রিস্টোর সফল হয়েছে! অনলাইনে সিঙ্ক করতে Google দিয়ে লগইন করুন।");
+                    }
+                    closeModal(); 
+                } else { 
+                    showToast("ভুল ফাইল ফরম্যাট!"); 
+                }
+            } catch (err) { 
+                showToast("ফাইল পড়তে সমস্যা হয়েছে!"); 
+            }
             event.target.value = ""; 
         };
         reader.readAsText(file);
     }
 
-    function copyText(text, type) {
-        let tempInput = document.createElement("input"); tempInput.value = text; document.body.appendChild(tempInput); tempInput.select(); tempInput.setSelectionRange(0, 99999); 
-        try { document.execCommand("copy"); showToast(type + " কপি হয়েছে!"); } catch (err) { alert("কপি করতে সমস্যা হয়েছে!"); }
+    function copyText(text, type, btnElem) {
+        if (!text) {
+            showToast("কোনো নম্বর নেই");
+            return;
+        }
+        
+        const provideVisualFeedback = () => {
+            if (btnElem) {
+                const oldContent = btnElem.innerHTML;
+                btnElem.innerHTML = `
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                `;
+                setTimeout(() => { btnElem.innerHTML = oldContent; }, 1500);
+            }
+        };
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(() => {
+                showToast(type + " কপি হয়েছে!");
+                provideVisualFeedback();
+            }).catch(() => {
+                fallbackCopy(text, type);
+                provideVisualFeedback();
+            });
+        } else {
+            fallbackCopy(text, type);
+            provideVisualFeedback();
+        }
+    }
+
+    function fallbackCopy(text, type) {
+        let tempInput = document.createElement("input");
+        tempInput.value = text;
+        document.body.appendChild(tempInput);
+        tempInput.select();
+        tempInput.setSelectionRange(0, 99999); 
+        try {
+            document.execCommand("copy");
+            showToast(type + " কপি হয়েছে!");
+        } catch (err) {
+            showToast("কপি করা সম্ভব হয়নি!");
+        }
         document.body.removeChild(tempInput);
     }
 
     function showToast(message) {
-        let toast = document.getElementById("toast"); toast.innerText = message; toast.className = "show";
-        setTimeout(function(){ toast.className = toast.className.replace("show", ""); }, 2500);
+        let toast = document.getElementById("toast"); 
+        toast.innerText = message; 
+        toast.className = "show";
+        setTimeout(function(){ toast.className = toast.className.replace("show", ""); }, 2600);
     }
 
     function getCountdownHTML(dueDayString, isPaid) {
         if (!dueDayString) return ''; 
         
-        if(isPaid) {
-            return `<div class="countdown-box time-paid">✅ এই মাসের বিল পরিশোধিত (Success)</div>`;
+        if (isPaid) {
+            return `
+                <div class="countdown-box time-paid">
+                    <span class="status-icon">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                            <polyline points="9 12 11 14 15 10"/>
+                        </svg>
+                    </span>
+                    <span>এই মাসের বিল পরিশোধিত</span>
+                </div>
+            `;
         }
 
         let dueDay = parseInt(dueDayString);
@@ -512,20 +2078,51 @@
         let diff = target - now;
         
         if (diff < 0) {
-            return `<div class="countdown-box time-over">⏳ ${dueDay} তারিখ (এই মাসের সময় শেষ!)</div>`;
+            return `
+                <div class="countdown-box time-over">
+                    <span class="status-icon">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"/>
+                            <line x1="12" y1="8" x2="12" y2="12"/>
+                            <line x1="12" y1="16" x2="12.01" y2="16"/>
+                        </svg>
+                    </span>
+                    <span><strong class="tabular">${dueDay}</strong> তারিখ · এই মাসের সময় শেষ! দ্রুত পরিশোধ করুন</span>
+                </div>
+            `;
         }
         
         let days = Math.floor(diff / (1000 * 60 * 60 * 24));
         let hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
         
         if (days === 0) {
-            return `<div class="countdown-box time-warning">⏳ ${dueDay} তারিখ (আর মাত্র ${hours} ঘণ্টা বাকি!)</div>`;
+            return `
+                <div class="countdown-box time-warning">
+                    <span class="status-icon">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"/>
+                            <polyline points="12 6 12 12 16 14"/>
+                        </svg>
+                    </span>
+                    <span><strong class="tabular">${dueDay}</strong> তারিখ · আর মাত্র <strong class="tabular">${hours}</strong> ঘণ্টা বাকি!</span>
+                </div>
+            `;
         }
-        return `<div class="countdown-box time-safe">⏳ ${dueDay} তারিখ (আর ${days} দিন ${hours} ঘণ্টা বাকি)</div>`;
+        return `
+            <div class="countdown-box time-safe">
+                <span class="status-icon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"/>
+                        <polyline points="12 6 12 12 16 14"/>
+                    </svg>
+                </span>
+                <span><strong class="tabular">${dueDay}</strong> তারিখ · আর <strong class="tabular">${days}</strong> দিন <strong class="tabular">${hours}</strong> ঘণ্টা বাকি</span>
+            </div>
+        `;
     }
 
     function displayCustomers() {
-        let searchQuery = document.getElementById('searchInput').value.toLowerCase();
+        let searchQuery = document.getElementById('searchInput').value.toLowerCase().trim();
         let filterGroup = document.getElementById('filterGroup').value;
         let filterDate = document.getElementById('filterDate').value;
         let filterStatus = document.getElementById('filterStatus').value;
@@ -538,7 +2135,9 @@
         
         let filtered = customers.filter(c => {
             let isPaid = c.lastPaidMonth === currentMonth;
-            let matchSearch = c.name.toLowerCase().includes(searchQuery);
+            let matchSearch = (c.name || '').toLowerCase().includes(searchQuery) || 
+                              (c.mobile || '').toLowerCase().includes(searchQuery) ||
+                              (c.sms || '').toLowerCase().includes(searchQuery);
             let matchGroup = (filterGroup === 'All') || (c.group === filterGroup);
             let matchDate = (filterDate === 'All') || (c.dueDate === filterDate);
             
@@ -549,68 +2148,160 @@
             return matchSearch && matchGroup && matchDate && matchStatus;
         });
 
-        countBox.innerText = `মোট গ্রাহক: ${filtered.length} জন`;
+        // Summary Counts Calculation
+        let totalCount = filtered.length;
+        let paidCount = filtered.filter(c => c.lastPaidMonth === currentMonth).length;
+        let unpaidCount = totalCount - paidCount;
+
+        countBox.innerHTML = `মোট: <strong>${totalCount}</strong> জন · বাকি: <strong>${unpaidCount}</strong> · পরিশোধিত: <strong>${paidCount}</strong>`;
 
         if (filtered.length === 0) { 
-            listContainer.innerHTML = '<div class="no-data">কোনো গ্রাহক পাওয়া যায়নি।<br>নিচে <b>+</b> বাটনে ক্লিক করে তথ্য যোগ করুন।</div>'; 
+            listContainer.innerHTML = `
+                <div class="no-data">
+                    <span class="no-data-icon">🔍</span>
+                    <div>কোনো গ্রাহক পাওয়া যায়নি।</div>
+                    <div style="font-size: 12px; margin-top: 4px; color: #94A3B8;">নিচের <b>+</b> বাটনে ক্লিক করে নতুন তথ্য যোগ করতে পারেন।</div>
+                </div>
+            `; 
             return; 
         }
 
         filtered.forEach((c, index) => {
-            let motherHTML = c.mother ? `<div><strong>মাতা:</strong> ${c.mother}</div>` : '';
+            let motherHTML = c.mother ? `<div class="card-details-row"><strong>মাতা:</strong> <span>${c.mother}</span></div>` : '';
             let isPaid = c.lastPaidMonth === currentMonth;
             let countdownHTML = getCountdownHTML(c.dueDate, isPaid); 
             
-            let card = document.createElement('div'); card.className = 'card';
+            let card = document.createElement('div'); 
+            card.className = `card ${isPaid ? 'paid-card' : ''}`;
             card.innerHTML = `
                 <div class="card-header">
-                    <div class="card-name">
-                        <span class="serial-badge ${isPaid ? 'paid-badge' : ''}">${index + 1}</span> ${c.name}
+                    <div class="card-name-group">
+                        <span class="serial-badge ${isPaid ? 'paid-badge' : ''}">${isPaid ? '✓' : (index + 1)}</span>
+                        <div class="card-name">${c.name}</div>
                     </div>
                     <div class="group-tag">${c.group}</div>
                 </div>
-                <div class="card-details"><div><strong>পিতা:</strong> ${c.father}</div>${motherHTML}<div><strong>ঠিকানা:</strong> ${c.address}</div></div>
+                
+                <div class="card-details">
+                    <div class="card-details-row"><strong>পিতা:</strong> <span>${c.father || '-'}</span></div>
+                    ${motherHTML}
+                    <div class="card-details-row"><strong>ঠিকানা:</strong> <span>${c.address || '-'}</span></div>
+                </div>
                 
                 ${countdownHTML} 
 
                 <div class="copy-section">
-                    <div class="info-block" onclick="event.stopPropagation();"><div><div class="info-label">মোবাইল নম্বর</div><div class="info-value">${c.mobile || 'দেওয়া নেই'}</div></div><button class="copy-icon-btn" onclick="copyText('${c.mobile}', 'মোবাইল নম্বর')">📋</button></div>
-                    <div class="info-block" onclick="event.stopPropagation();"><div><div class="info-label">SMS অ্যাকাউন্ট</div><div class="info-value">${c.sms}</div></div><button class="copy-icon-btn" onclick="copyText('${c.sms}', 'SMS অ্যাকাউন্ট')">📋</button></div>
+                    <div class="info-block" onclick="event.stopPropagation();">
+                        <div class="info-meta">
+                            <div class="info-label">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                                </svg>
+                                মোবাইল নম্বর
+                            </div>
+                            <div class="info-value tabular">${c.mobile || 'দেওয়া নেই'}</div>
+                        </div>
+                        <button class="copy-icon-btn" onclick="copyText('${c.mobile}', 'মোবাইল নম্বর', this)" title="মোবাইল নম্বর কপি করুন">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <div class="info-block" onclick="event.stopPropagation();">
+                        <div class="info-meta">
+                            <div class="info-label">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
+                                </svg>
+                                SMS অ্যাকাউন্ট / মিটার
+                            </div>
+                            <div class="info-value tabular">${c.sms}</div>
+                        </div>
+                        <button class="copy-icon-btn" onclick="copyText('${c.sms}', 'SMS অ্যাকাউন্ট', this)" title="SMS অ্যাকাউন্ট কপি করুন">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
             `;
+
+            // Open Action modal on card click or press
+            const triggerCustomerAction = () => {
+                selectedCustomerId = c.id; 
+                document.getElementById('actionCustomerName').innerText = c.name;
+                
+                let paymentBtn = document.getElementById('actionPaymentBtn');
+                if(isPaid) {
+                    paymentBtn.innerText = "❌ আনপেইড মার্ক করুন";
+                    paymentBtn.className = "action-sheet-btn action-warning-btn";
+                } else {
+                    paymentBtn.innerText = "✅ বিল পরিশোধিত (Success)";
+                    paymentBtn.className = "action-sheet-btn action-success-btn";
+                }
+                
+                openModal('actionModal'); 
+            };
+
+            card.onclick = function() {
+                triggerCustomerAction();
+            };
+
             let pressTimer;
             const startPress = () => { 
                 pressTimer = setTimeout(() => { 
-                    selectedCustomerId = c.id; 
-                    document.getElementById('actionCustomerName').innerText = c.name;
-                    
-                    let paymentBtn = document.getElementById('actionPaymentBtn');
-                    if(isPaid) {
-                        paymentBtn.innerText = "❌ আনপেইড মার্ক করুন";
-                        paymentBtn.className = "action-sheet-btn action-warning-btn";
-                    } else {
-                        paymentBtn.innerText = "✅ বিল পরিশোধিত (Success)";
-                        paymentBtn.className = "action-sheet-btn action-success-btn";
-                    }
-                    
-                    openModal('actionModal'); 
-                }, 600); 
+                    triggerCustomerAction();
+                }, 500); 
             };
             const cancelPress = () => clearTimeout(pressTimer);
-            card.addEventListener('mousedown', startPress); card.addEventListener('mouseup', cancelPress); card.addEventListener('mouseleave', cancelPress);
-            card.addEventListener('touchstart', startPress); card.addEventListener('touchend', cancelPress); card.addEventListener('touchmove', cancelPress);
+            card.addEventListener('mousedown', startPress); 
+            card.addEventListener('mouseup', cancelPress); 
+            card.addEventListener('mouseleave', cancelPress);
+            card.addEventListener('touchstart', startPress); 
+            card.addEventListener('touchend', cancelPress); 
+            card.addEventListener('touchmove', cancelPress);
+
             listContainer.appendChild(card);
         });
     }
-    
-    // PWA Service Worker
+
+    // Attach all handlers to window for inline onclick handlers
+    window.openModal = openModal;
+    window.closeModal = closeModal;
+    window.openAccountModal = openAccountModal;
+    window.handleSettingsAuthClick = handleSettingsAuthClick;
+    window.loginWithGoogle = loginWithGoogle;
+    window.logoutGoogle = logoutGoogle;
+    window.syncAllLocalToCloud = syncAllLocalToCloud;
+    window.addGroup = addGroup;
+    window.saveCustomer = saveCustomer;
+    window.triggerPaymentToggle = triggerPaymentToggle;
+    window.triggerEdit = triggerEdit;
+    window.triggerDelete = triggerDelete;
+    window.triggerGroupEdit = triggerGroupEdit;
+    window.triggerGroupDelete = triggerGroupDelete;
+    window.toggleGroupList = toggleGroupList;
+    window.exportData = exportData;
+    window.importData = importData;
+    window.copyText = copyText;
+    window.resetForm = resetForm;
+    window.displayCustomers = displayCustomers;
+    window.showToast = showToast;
+    window.setStatusSegment = setStatusSegment;
+    window.handleSearchInput = handleSearchInput;
+    window.clearSearchInput = clearSearchInput;
+
+    // Register Service Worker
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
             navigator.serviceWorker.register('./service-worker.js').catch(err => console.log(err));
         });
     }
 
-    window.onload = loadData;
+    loadLocalData();
 </script>
 </body>
 </html>
