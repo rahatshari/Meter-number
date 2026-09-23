@@ -1713,9 +1713,36 @@
         updateUI();
     }
 
+    /* ==========================================
+       Number & String Normalization Helpers
+       ========================================== */
+    function toBengaliNum(str) {
+        if (str === null || str === undefined) return '';
+        const bnDigits = ['০','১','২','৩','৪','৫','৬','৭','৮','৯'];
+        return String(str).replace(/[0-9]/g, d => bnDigits[d]);
+    }
+
+    function toEnglishNum(str) {
+        if (str === null || str === undefined) return '';
+        const bnMap = {'০':'0','১':'1','২':'2','৩':'3','৪':'4','৫':'5','৬':'6','৭':'7','৮':'8','৯':'9'};
+        return String(str).replace(/[০-৯]/g, d => bnMap[d]);
+    }
+
+    function normalizePhone(num) {
+        if (!num) return '';
+        let digits = toEnglishNum(String(num)).replace(/\D/g, '');
+        if (digits.startsWith('880')) digits = digits.substring(2);
+        if (!digits.startsWith('0') && digits.length === 10) digits = '0' + digits;
+        return digits;
+    }
+
+    function normalizeSms(s) {
+        if (!s) return '';
+        return toEnglishNum(String(s)).replace(/[\s\-\_]/g, '').toLowerCase();
+    }
+
     function saveData() {
         localStorage.setItem('billCustomers', JSON.stringify(customers));
-        localStorage.setItem('billGroups', JSON.stringify(groups));
     }
 
     function updateUI() { 
@@ -2200,15 +2227,32 @@
     function updateDropdowns() {
         let filterDate = document.getElementById('filterDate');
         if (!filterDate) return;
-        filterDate.innerHTML = '<option value="All">সব তারিখ</option>';
-        let uniqueDates = [...new Set(customers.map(c => c.dueDate).filter(d => d))];
-        uniqueDates.sort((a, b) => parseInt(a) - parseInt(b));
-        uniqueDates.forEach(d => {
-            filterDate.innerHTML += `<option value="${d}">${d} তারিখ</option>`;
+        const currentSelected = filterDate.value;
+        filterDate.innerHTML = '<option value="All">সব তারিখ (বিলের শেষ সময়)</option>';
+        
+        let dateSet = new Set();
+        customers.forEach(c => {
+            if (c.dueDate) {
+                let norm = parseInt(toEnglishNum(String(c.dueDate)).trim());
+                if (!isNaN(norm) && norm >= 1 && norm <= 31) {
+                    dateSet.add(norm);
+                }
+            }
         });
+        
+        let uniqueDates = Array.from(dateSet);
+        uniqueDates.sort((a, b) => a - b);
+        
+        uniqueDates.forEach(d => {
+            filterDate.innerHTML += `<option value="${d}">${toBengaliNum(d)} তারিখ</option>`;
+        });
+
+        if (currentSelected && (currentSelected === 'All' || uniqueDates.map(String).includes(String(currentSelected)))) {
+            filterDate.value = currentSelected;
+        }
     }
 
-    async function saveCustomer() {
+    function saveCustomer() {
         let id = document.getElementById('editCustomerId').value, 
             name = document.getElementById('cName').value.trim(), 
             father = document.getElementById('cFather').value.trim(), 
@@ -2216,41 +2260,82 @@
             address = document.getElementById('cAddress').value.trim(), 
             mobile = document.getElementById('cMobile').value.trim(), 
             sms = document.getElementById('cSms').value.trim(), 
-            dueDate = document.getElementById('cDueDate').value.trim();
+            rawDueDate = document.getElementById('cDueDate').value.trim();
 
-        if (name && mobile && sms && dueDate) {
-            if (parseInt(dueDate) < 1 || parseInt(dueDate) > 31) {
-                showToast("দয়া করে ১ থেকে ৩১ এর মধ্যে একটি সঠিক তারিখ দিন।");
+        if (!name || !mobile || !sms || !rawDueDate) {
+            showToast('দয়া করে নাম, মোবাইল নম্বর, SMS অ্যাকাউন্ট ও বিলের শেষ তারিখ পূরণ করুন।');
+            return;
+        }
+
+        let dueDateNum = parseInt(toEnglishNum(rawDueDate));
+        if (isNaN(dueDateNum) || dueDateNum < 1 || dueDateNum > 31) {
+            showToast("দয়া করে ১ থেকে ৩১ এর মধ্যে একটি সঠিক তারিখ দিন।");
+            return;
+        }
+        let dueDate = String(dueDateNum);
+
+        // ২. ডুপ্লিকেট যাচাইকরণ: একই মোবাইল নম্বর বা SMS অ্যাকাউন্ট নম্বর অন্য গ্রাহকের তথ্যে থাকতে পারবে না
+        let cleanMobile = normalizePhone(mobile);
+        if (cleanMobile) {
+            let dupMobile = customers.find(c => {
+                if (id && String(c.id) === String(id)) return false;
+                return c.mobile && normalizePhone(c.mobile) === cleanMobile;
+            });
+            if (dupMobile) {
+                showToast(`⚠️ এই মোবাইল নম্বরটি ইতিমধ্যে "${dupMobile.name}" এর তথ্যে সংরক্ষিত আছে!`);
                 return;
             }
-            let targetCustomer = null;
-            let isEdit = !!id;
-            if (id) {
-                let index = customers.findIndex(c => String(c.id) === String(id));
-                if (index !== -1) {
-                    let oldPaidMonth = customers[index].lastPaidMonth;
-                    let existingGroup = customers[index].group || "";
-                    targetCustomer = { id: parseFloat(id), name, father, mother, address, mobile, sms, dueDate, group: existingGroup, lastPaidMonth: oldPaidMonth };
-                    customers[index] = targetCustomer;
-                }
-            } else {
-                targetCustomer = { id: Date.now(), name, father, mother, address, mobile, sms, dueDate, group: "", lastPaidMonth: "" };
-                customers.push(targetCustomer);
-            }
-            saveData(); 
-            updateUI(); 
-            closeModal();
+        }
 
-            if (currentUser && targetCustomer) {
-                await saveCustomerToFirestore(targetCustomer);
+        let cleanSms = normalizeSms(sms);
+        if (cleanSms) {
+            let dupSms = customers.find(c => {
+                if (id && String(c.id) === String(id)) return false;
+                return c.sms && normalizeSms(c.sms) === cleanSms;
+            });
+            if (dupSms) {
+                showToast(`⚠️ এই SMS অ্যাকাউন্ট / মিটার নম্বরটি ইতিমধ্যে "${dupSms.name}" এর তথ্যে সংরক্ষিত আছে!`);
+                return;
             }
-            notifyRealtimeBackup(isEdit ? "✅ গ্রাহকের তথ্য আপডেট ও ক্লাউডে ব্যাকআপ হয়েছে!" : "✅ নতুন গ্রাহক যোগ ও ক্লাউডে ব্যাকআপ সম্পন্ন!");
-        } else { 
-            showToast('দয়া করে নাম, মোবাইল নম্বর, SMS অ্যাকাউন্ট ও বিলের শেষ তারিখ পূরণ করুন।'); 
+        }
+
+        // ৩. তাৎক্ষণিক অপ্টিমিস্টিক আপডেট (কোনো লোডিং বা বিলম্ব নেই - সাথে সাথে সেভ ও ডিসপ্লে)
+        let targetCustomer = null;
+        let isEdit = !!id;
+        if (isEdit) {
+            let index = customers.findIndex(c => String(c.id) === String(id));
+            if (index !== -1) {
+                let oldPaidMonth = customers[index].lastPaidMonth;
+                let existingGroup = customers[index].group || "";
+                targetCustomer = { id: parseFloat(id), name, father, mother, address, mobile, sms, dueDate, group: existingGroup, lastPaidMonth: oldPaidMonth };
+                customers[index] = targetCustomer;
+            }
+        } else {
+            targetCustomer = { id: Date.now(), name, father, mother, address, mobile, sms, dueDate, group: "", lastPaidMonth: "" };
+            customers.unshift(targetCustomer); // নতুন গ্রাহক তালিকায় একদম উপরে সাথে সাথে চলে আসবে
+        }
+
+        saveData(); 
+        updateUI(); 
+        closeModal();
+        resetForm();
+
+        // সাথে সাথে অ্যাড হওয়ার ফিডব্যাক বার্তা প্রদর্শন
+        showToast(isEdit ? "✅ গ্রাহকের তথ্য সফলভাবে আপডেট হয়েছে!" : "✅ নতুন গ্রাহক সফলভাবে অ্যাড হয়েছে!");
+        notifyRealtimeBackup();
+
+        // ৪. ব্যাকগ্রাউন্ড ক্লাউড ব্যাকআপ (নন-ব্লকিং: ব্যাকগ্রাউন্ডে নিরাপদে ক্লাউডে সেভ হবে, কোনো দেরি করবে না)
+        if (currentUser && targetCustomer) {
+            saveCustomerToFirestore(targetCustomer).then(() => {
+                const textElem = document.getElementById('liveBackupText');
+                if (textElem && currentUser) textElem.innerText = "☁️ ক্লাউডে ব্যাকআপ সম্পন্ন";
+            }).catch(err => {
+                console.error("Cloud background sync error", err);
+            });
         }
     }
 
-    async function triggerPaymentToggle() {
+    function triggerPaymentToggle() {
         closeModal();
         let c = customers.find(item => item.id === selectedCustomerId);
         if (c) {
@@ -2264,10 +2349,11 @@
             }
             saveData(); 
             updateUI();
+            showToast(isNowPaid ? "✅ বিল পরিশোধিত হিসেবে মার্ক করা হয়েছে!" : "বিল আনপেইড করা হয়েছে!");
+            notifyRealtimeBackup();
             if (currentUser) {
-                await saveCustomerToFirestore(c);
+                saveCustomerToFirestore(c).catch(err => console.error("Sync error", err));
             }
-            notifyRealtimeBackup(isNowPaid ? "✅ বিল পরিশোধিত ও ব্যাকআপ সিঙ্ক হয়েছে!" : "বিল আনপেইড ও ব্যাকআপ সিঙ্ক হয়েছে!");
         }
     }
 
@@ -2309,14 +2395,15 @@
                 "গ্রাহকের তথ্য মুছুন",
                 `আপনি কি নিশ্চিতভাবে '${custName}'-এর তথ্য মুছে ফেলতে চান?`,
                 "মুছে ফেলুন",
-                async () => {
+                () => {
                     customers = customers.filter(item => item.id !== targetId);
                     saveData();
                     updateUI();
+                    showToast("🗑️ গ্রাহকের তথ্য মুছে ফেলা হয়েছে!");
+                    notifyRealtimeBackup();
                     if (currentUser) {
-                        await deleteCustomerFromFirestore(targetId);
+                        deleteCustomerFromFirestore(targetId).catch(err => console.error(err));
                     }
-                    notifyRealtimeBackup("🗑️ গ্রাহক মোছা হয়েছে ও ব্যাকআপ আপডেট হয়েছে!");
                 }
             );
         }, 150);
@@ -2635,33 +2722,39 @@
         document.body.removeChild(tempInput);
     }
 
+    let toastTimeout = null;
     function showToast(message) {
         let toast = document.getElementById("toast"); 
+        if (!toast) return;
         toast.innerText = message; 
-        toast.className = "show";
-        setTimeout(function(){ toast.className = toast.className.replace("show", ""); }, 2600);
+        toast.classList.add("show");
+        clearTimeout(toastTimeout);
+        toastTimeout = setTimeout(function(){ 
+            toast.classList.remove("show"); 
+        }, 2800);
     }
 
     function getCountdownHTML(dueDayString, isPaid) {
         if (!dueDayString) return ''; 
+        let dueDayNum = parseInt(toEnglishNum(String(dueDayString)));
+        if (isNaN(dueDayNum)) return '';
+        let dueDayBn = toBengaliNum(dueDayNum);
         
         if (isPaid) {
             return `
                 <div class="countdown-box time-paid">
                     <span class="status-icon">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                            <polyline points="9 12 11 14 15 10"/>
+                            <polyline points="20 6 9 17 4 12"/>
                         </svg>
                     </span>
-                    <span>এই মাসের বিল পরিশোধিত</span>
+                    <span><strong class="tabular">${dueDayBn}</strong> তারিখ · এই মাসের বিল পরিশোধিত</span>
                 </div>
             `;
         }
 
-        let dueDay = parseInt(dueDayString);
         let now = new Date();
-        let target = new Date(now.getFullYear(), now.getMonth(), dueDay, 23, 59, 59);
+        let target = new Date(now.getFullYear(), now.getMonth(), dueDayNum, 23, 59, 59);
         let diff = target - now;
         
         if (diff < 0) {
@@ -2674,13 +2767,15 @@
                             <line x1="12" y1="16" x2="12.01" y2="16"/>
                         </svg>
                     </span>
-                    <span><strong class="tabular">${dueDay}</strong> তারিখ · এই মাসের সময় শেষ! দ্রুত পরিশোধ করুন</span>
+                    <span><strong class="tabular">${dueDayBn}</strong> তারিখ · এই মাসের সময় শেষ! দ্রুত পরিশোধ করুন</span>
                 </div>
             `;
         }
         
         let days = Math.floor(diff / (1000 * 60 * 60 * 24));
         let hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+        let daysBn = toBengaliNum(days);
+        let hoursBn = toBengaliNum(hours);
         
         if (days === 0) {
             return `
@@ -2691,7 +2786,7 @@
                             <polyline points="12 6 12 12 16 14"/>
                         </svg>
                     </span>
-                    <span><strong class="tabular">${dueDay}</strong> তারিখ · আর মাত্র <strong class="tabular">${hours}</strong> ঘণ্টা বাকি!</span>
+                    <span><strong class="tabular">${dueDayBn}</strong> তারিখ · আর মাত্র <strong class="tabular">${hoursBn}</strong> ঘণ্টা বাকি!</span>
                 </div>
             `;
         }
@@ -2703,7 +2798,7 @@
                         <polyline points="12 6 12 12 16 14"/>
                     </svg>
                 </span>
-                <span><strong class="tabular">${dueDay}</strong> তারিখ · আর <strong class="tabular">${days}</strong> দিন <strong class="tabular">${hours}</strong> ঘণ্টা বাকি</span>
+                <span><strong class="tabular">${dueDayBn}</strong> তারিখ · আর <strong class="tabular">${daysBn}</strong> দিন <strong class="tabular">${hoursBn}</strong> ঘণ্টা বাকি</span>
             </div>
         `;
     }
@@ -2732,7 +2827,7 @@
                               (c.sms || '').toLowerCase().includes(searchQuery) ||
                               (c.father || '').toLowerCase().includes(searchQuery) ||
                               (c.address || '').toLowerCase().includes(searchQuery);
-            let matchDate = (filterDate === 'All') || (c.dueDate === filterDate);
+            let matchDate = (filterDate === 'All') || (toEnglishNum(String(c.dueDate || '')).trim() === String(filterDate));
             
             let matchStatus = true;
             if (filterStatus === 'Paid') matchStatus = isPaid;
@@ -2741,12 +2836,12 @@
             return matchSearch && matchDate && matchStatus;
         });
 
-        // Summary Counts Calculation
+        // Summary Counts Calculation (Formatted in Bengali Numerals)
         let totalCount = filtered.length;
         let paidCount = filtered.filter(c => c.lastPaidMonth === currentMonth).length;
         let unpaidCount = totalCount - paidCount;
 
-        countBox.innerHTML = `মোট: <strong>${totalCount}</strong> জন · বাকি: <strong>${unpaidCount}</strong> · পরিশোধিত: <strong>${paidCount}</strong>`;
+        countBox.innerHTML = `মোট: <strong>${toBengaliNum(totalCount)}</strong> জন · বাকি: <strong>${toBengaliNum(unpaidCount)}</strong> · পরিশোধিত: <strong>${toBengaliNum(paidCount)}</strong>`;
 
         if (filtered.length === 0) { 
             listContainer.innerHTML = `
@@ -2769,7 +2864,7 @@
             card.innerHTML = `
                 <div class="card-header">
                     <div class="card-name-group">
-                        <span class="serial-badge ${isPaid ? 'paid-badge' : ''}">${isPaid ? '✓' : (index + 1)}</span>
+                        <span class="serial-badge ${isPaid ? 'paid-badge' : ''}">${isPaid ? '✓' : toBengaliNum(index + 1)}</span>
                         <div class="card-name">${c.name}</div>
                     </div>
                 </div>
@@ -2922,6 +3017,8 @@
     window.resetForm = resetForm;
     window.displayCustomers = displayCustomers;
     window.showToast = showToast;
+    window.toBengaliNum = toBengaliNum;
+    window.toEnglishNum = toEnglishNum;
     window.setStatusSegment = setStatusSegment;
     window.handleSearchInput = handleSearchInput;
     window.clearSearchInput = clearSearchInput;

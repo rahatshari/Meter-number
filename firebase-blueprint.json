@@ -13,11 +13,11 @@
         "mobile": { "type": "string", "maxLength": 30, "description": "Mobile contact number" },
         "sms": { "type": "string", "maxLength": 50, "description": "SMS account or meter number" },
         "dueDate": { "type": "string", "maxLength": 10, "description": "Due day of the month (1-31)" },
-        "group": { "type": "string", "maxLength": 100, "description": "Group/Neighborhood name" },
+        "group": { "type": "string", "maxLength": 100, "description": "Group/Neighborhood name (optional legacy)" },
         "lastPaidMonth": { "type": "string", "maxLength": 20, "description": "Last paid month in YYYY-M format" },
         "userId": { "type": "string", "description": "Owner user ID" }
       },
-      "required": ["id", "name", "mobile", "sms", "dueDate", "group", "userId"]
+      "required": ["id", "name", "mobile", "sms", "dueDate", "userId"]
     },
     "Group": {
       "title": "Group",

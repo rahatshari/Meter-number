@@ -27,7 +27,7 @@ service cloud.firestore {
     }
 
     function isValidCustomer(data, userId) {
-      return data.keys().hasAll(['id', 'name', 'mobile', 'sms', 'dueDate', 'group', 'userId'])
+      return data.keys().hasAll(['id', 'name', 'mobile', 'sms', 'dueDate', 'userId'])
         && data.keys().hasOnly(['id', 'name', 'father', 'mother', 'address', 'mobile', 'sms', 'dueDate', 'group', 'lastPaidMonth', 'userId', 'createdAt', 'updatedAt'])
         && data.userId == userId
         && data.id is string && data.id.size() > 0 && data.id.size() <= 128
@@ -38,7 +38,7 @@ service cloud.firestore {
         && data.mobile is string && data.mobile.size() > 0 && data.mobile.size() <= 30
         && data.sms is string && data.sms.size() > 0 && data.sms.size() <= 50
         && data.dueDate is string && data.dueDate.size() > 0 && data.dueDate.size() <= 10
-        && data.group is string && data.group.size() > 0 && data.group.size() <= 100
+        && (!('group' in data) || (data.group is string && data.group.size() <= 100))
         && (!('lastPaidMonth' in data) || (data.lastPaidMonth is string && data.lastPaidMonth.size() <= 20));
     }
 
