@@ -1541,42 +1541,40 @@
         </div>
 
         <div style="background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 12px; padding: 10px 12px; font-size: 12.5px; color: #92400E; line-height: 1.45; margin-bottom: 12px;">
-            Google লগইনের সময়ে <b>auth/unauthorized-domain</b> সমস্যা সমাধান করতে নিচের ডোমেনটি আপনার ফায়ারবেস কনসোলে যোগ করুন:
+            Google লগইনের সময়ে <b>auth/unauthorized-domain</b> অথবা কনসোলে <b>"To manage settings, ask a project owner"</b> দেখালে নিচের যেকোনো একটি সমাধান বেছে নিন:
+        </div>
+
+        <!-- Recommended Instant Solution -->
+        <div style="background: #ECFDF5; border: 1.5px solid #10B981; border-radius: 12px; padding: 12px; margin-bottom: 14px; text-align: left;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                <span style="font-size: 18px;">⭐</span>
+                <strong style="color: #065F46; font-size: 13.5px;">১ সেকেন্ডের ১০০% নিশ্চিত সমাধান (কোনো অনুমতি ছাড়াই):</strong>
+            </div>
+            <p style="margin: 0 0 10px; font-size: 12px; color: #047857; line-height: 1.45;">
+                যেহেতু এই ফায়ারবেস প্রজেক্টটি AI Studio সিস্টেম তৈরি করেছে, তাই এর কনসোল পারমিশন লক থাকে। <b>তবে ইমেইল ও পাসওয়ার্ড লগইনের জন্য কোনো ডোমেন অনুমোদনের প্রয়োজন হয় না!</b> এটি যেকোনো ডোমেন বা GitHub Pages-এ সাথে সাথেই কাজ করে।
+            </p>
+            <button class="primary-btn" style="background: #059669; margin: 0; width: 100%; font-size: 13.5px; padding: 10px; border-radius: 8px;" onclick="closeModal(); openAuthModal('email');">
+                ✉️ ইমেইল ও পাসওয়ার্ড দিয়ে সরাসরি লগইন করুন
+            </button>
+        </div>
+
+        <div style="text-align: center; margin: 12px 0; position: relative;">
+            <hr style="border: none; border-top: 1px solid #E2E8F0;">
+            <span style="position: absolute; top: -9px; left: 50%; transform: translateX(-50%); background: white; padding: 0 10px; font-size: 11px; color: var(--text-muted);">অথবা আপনি যদি প্রজেক্ট ওনার হন</span>
         </div>
 
         <div class="domain-box">
-            <span class="domain-code" id="currentDomainCode">domain.run.app</span>
+            <span class="domain-code" id="currentDomainCode">rahatshari.github.io</span>
             <button class="domain-copy-btn" id="domainCopyBtn" onclick="copyDomain()">📋 কপি করুন</button>
         </div>
 
-        <div style="font-size: 13px; font-weight: 700; color: var(--text-main); margin-top: 14px;">কিভাবে ৩টি ধাপে যুক্ত করবেন:</div>
-        <ul class="step-list">
-            <li class="step-item">
-                <span class="step-num">১</span>
-                <span>Firebase Console-এ যান এবং <b>Authentication &gt; Settings</b> ট্যাবে ক্লিক করুন।</span>
-            </li>
-            <li class="step-item">
-                <span class="step-num">২</span>
-                <span><b>Authorized domains</b> (অনুমোদিত ডোমেন) সেকশনে <b>"Add domain"</b> বাটনে চাপুন।</span>
-            </li>
-            <li class="step-item">
-                <span class="step-num">৩</span>
-                <span>উপরের কপি করা ডোমেনটি পেস্ট করে <b>Add / Save</b> দিন। এরপর আবার Google লগইন করুন!</span>
-            </li>
-        </ul>
-
-        <button class="primary-btn" style="background: #4F46E5; margin-top: 8px; font-size: 13.5px;" onclick="window.open('https://console.firebase.google.com/project/striking-gist-mjq9c/authentication/settings', '_blank')">
-            🔗 Firebase Settings লিঙ্ক খুলুন
-        </button>
-
-        <div style="text-align: center; margin: 14px 0 8px; position: relative;">
-            <hr style="border: none; border-top: 1px solid #E2E8F0;">
-            <span style="position: absolute; top: -9px; left: 50%; transform: translateX(-50%); background: white; padding: 0 10px; font-size: 11.5px; color: var(--text-muted);">অথবা সহজ বিকল্প</span>
+        <div style="font-size: 12px; color: var(--text-muted); margin-top: 8px; line-height: 1.4;">
+            ফায়ারবেস কনসোলে Authorized domains-এ <code>https://</code> ছাড়া শুধুমাত্র <b>rahatshari.github.io</b> এবং <b>github.io</b> লিখে যুক্ত করুন।
         </div>
 
-        <button class="primary-btn" style="background: #059669; margin-top: 0; font-size: 13.5px;" onclick="closeModal(); openAuthModal('email');">
-            ✉️ কোনো সেটিংস ছাড়াই ইমেইল দিয়ে সরাসরি লগইন করুন
-        </button>
+        <a href="https://console.firebase.google.com/project/electric-20c05/authentication/settings" target="_blank" rel="noopener noreferrer" class="primary-btn" style="background: #4F46E5; margin-top: 10px; font-size: 13px; text-decoration: none; display: flex; align-items: center; justify-content: center; color: white;">
+            🔗 আপনার Firebase Settings পেজ খুলুন (electric-20c05)
+        </a>
     </div>
 </div>
 
@@ -1725,15 +1723,15 @@
 
     // Firebase Configuration
     let firebaseConfig = {
-        projectId: "striking-gist-mjq9c",
-        appId: "1:1011577606183:web:4ef4336254599f3afc3e02",
-        apiKey: "AIzaSyD9tzxDHCM1J_IY2TNxOljAOfilyAoepfg",
-        authDomain: "striking-gist-mjq9c.firebaseapp.com",
-        firestoreDatabaseId: "ai-studio-meternumber-d8e7d7f5-6ef8-422d-bd6e-76a4d2927f85",
-        storageBucket: "striking-gist-mjq9c.firebasestorage.app",
-        messagingSenderId: "1011577606183",
+        projectId: "electric-20c05",
+        appId: "1:642666694691:web:b496aa83d01ceef65d8996",
+        apiKey: "AIzaSyBgVUNfPvuda_A6u3amqWoiu2s0nhY4rQE",
+        authDomain: "electric-20c05.firebaseapp.com",
+        firestoreDatabaseId: "(default)",
+        storageBucket: "electric-20c05.firebasestorage.app",
+        messagingSenderId: "642666694691",
         measurementId: "",
-        oAuthClientId: "1011577606183-312uinu0thr1cuad9auscat5ihdlde2u.apps.googleusercontent.com"
+        oAuthClientId: ""
     };
 
     try {
@@ -1747,7 +1745,9 @@
     }
 
     const app = initializeApp(firebaseConfig);
-    export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId); /* CRITICAL: The app will break without this line */
+    export const db = (firebaseConfig.firestoreDatabaseId && firebaseConfig.firestoreDatabaseId !== "(default)")
+        ? getFirestore(app, firebaseConfig.firestoreDatabaseId)
+        : getFirestore(app); /* CRITICAL: The app will break without this line */
     export const auth = getAuth(app);
 
     // Validate Connection to Firestore (Per SKILL.md)
