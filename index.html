@@ -15,10 +15,10 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <link rel="apple-touch-icon" href="icon.png">
 
-    <!-- মূল ও সেরা বাংলা ও সংখ্যা ফন্ট (Hind Siliguri) -->
+    <!-- প্রিমিয়াম ও নির্ভুল বাংলা ও সংখ্যা ফন্ট (Noto Sans Bengali) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;500;600;700&display=swap" rel="stylesheet">
     
     <style>
         :root { 
@@ -51,7 +51,7 @@
         
         * {
             box-sizing: border-box;
-            font-family: 'Hind Siliguri', system-ui, -apple-system, sans-serif;
+            font-family: 'Noto Sans Bengali', system-ui, -apple-system, sans-serif;
             -webkit-tap-highlight-color: transparent;
         }
 
@@ -68,7 +68,7 @@
         }
 
         .tabular {
-            font-family: 'Hind Siliguri', system-ui, -apple-system, sans-serif;
+            font-family: 'Noto Sans Bengali', system-ui, -apple-system, sans-serif;
             font-variant-numeric: normal;
         }
 
@@ -258,120 +258,6 @@
             background: #FFFFFF;
         }
 
-        /* Distinct Group Management & Add Group */
-        .distinct-add-group-card {
-            background: linear-gradient(135deg, #F8FAFC 0%, #EEF2FF 100%);
-            border: 1.5px dashed #C7D2FE;
-            border-radius: 14px;
-            padding: 13px 14px;
-            margin-bottom: 15px;
-        }
-        .distinct-add-title {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 13.5px;
-            font-weight: 700;
-            color: #3730A3;
-        }
-        .dedicated-group-list {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            max-height: 270px;
-            overflow-y: auto;
-            padding-right: 2px;
-        }
-        .group-row-item {
-            background: #FFFFFF;
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 9px 12px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 8px;
-            transition: background 0.15s;
-        }
-        .group-row-item:hover {
-            background: #F8FAFC;
-        }
-        .group-row-info {
-            display: flex;
-            align-items: center;
-            gap: 9px;
-            min-width: 0;
-        }
-        .group-row-name {
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--text-main);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .group-row-count {
-            font-size: 11px;
-            background: #F1F5F9;
-            color: #64748B;
-            padding: 2px 7px;
-            border-radius: 12px;
-            font-weight: 600;
-            display: inline-block;
-            margin-top: 1px;
-        }
-        .group-action-btn-wrap {
-            display: flex;
-            gap: 6px;
-            flex-shrink: 0;
-        }
-        .group-small-btn {
-            width: 32px;
-            height: 32px;
-            border-radius: 8px;
-            border: 1px solid var(--border-color);
-            background: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            font-size: 13px;
-            color: #475569;
-            transition: all 0.15s;
-            padding: 0;
-        }
-        .group-small-btn:active {
-            transform: scale(0.92);
-        }
-        .group-small-btn.edit:active {
-            background: #EEF2FF;
-            color: #4F46E5;
-        }
-        .group-small-btn.delete:active {
-            background: #FEE2E2;
-            color: #DC2626;
-        }
-        .group-shortcut-btn {
-            height: 42px;
-            padding: 0 10px;
-            background: white;
-            border: 1px solid var(--border-color);
-            border-radius: 11px;
-            font-size: 13px;
-            font-weight: 600;
-            color: #4F46E5;
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            cursor: pointer;
-            flex-shrink: 0;
-            transition: all 0.2s;
-        }
-        .group-shortcut-btn:active {
-            background: #EEF2FF;
-            transform: scale(0.95);
-        }
-        
         .google-btn {
             background: white;
             border: 1px solid #CBD5E1;
@@ -534,7 +420,7 @@
         }
         .count-bar strong {
             color: var(--primary);
-            font-family: 'Plus Jakarta Sans', monospace, sans-serif;
+            font-family: 'Noto Sans Bengali', system-ui, -apple-system, sans-serif;
             font-variant-numeric: tabular-nums;
         }
 
@@ -585,7 +471,7 @@
             font-size: 13px; 
             font-weight: 700; 
             flex-shrink: 0;
-            font-family: 'Plus Jakarta Sans', monospace, sans-serif;
+            font-family: 'Noto Sans Bengali', system-ui, -apple-system, sans-serif;
             font-variant-numeric: tabular-nums;
             border: 1px solid var(--primary-border);
         }
@@ -601,17 +487,6 @@
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-        }
-        .group-tag { 
-            background: #F1F5F9; 
-            padding: 4px 10px; 
-            border-radius: 8px; 
-            font-size: 11.5px; 
-            color: var(--text-muted); 
-            font-weight: 600;
-            white-space: nowrap;
-            flex-shrink: 0;
-            border: 1px solid #E2E8F0;
         }
 
         .card-details { 
@@ -715,7 +590,7 @@
             font-weight: 700; 
             color: var(--text-main); 
             letter-spacing: 0.2px;
-            font-family: 'Hind Siliguri', system-ui, -apple-system, sans-serif;
+            font-family: 'Noto Sans Bengali', system-ui, -apple-system, sans-serif;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -1000,43 +875,6 @@
             margin-bottom: 8px;
             display: block;
         }
-        
-        /* Group Settings Accordion */
-        .manage-box { 
-            max-height: 220px; 
-            overflow-y: auto; 
-            background: white; 
-            border: 1px solid var(--border-color); 
-            border-top: none; 
-            border-radius: 0 0 12px 12px; 
-            padding: 4px; 
-            display: none; 
-        }
-        .manage-item { 
-            padding: 12px 14px; 
-            border-bottom: 1px solid #F1F5F9; 
-            font-size: 14px; 
-            font-weight: 500; 
-            cursor: pointer;
-            border-radius: 8px;
-            transition: background 0.15s;
-        }
-        .manage-item:active { background-color: #F1F5F9; }
-        .accordion-header { 
-            background: #F8FAFC; 
-            padding: 13px 16px; 
-            border-radius: 12px; 
-            font-weight: 600; 
-            cursor: pointer; 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            color: var(--text-main); 
-            margin-top: 15px; 
-            border: 1px solid var(--border-color);
-            transition: background 0.2s;
-        }
-        .accordion-header:active { background: #F1F5F9; }
 
         /* Modern Data Hub & Modals Styling */
         .data-hub-tabs {
@@ -1117,7 +955,7 @@
             font-size: 15px;
             color: var(--primary);
             display: block;
-            font-family: 'Plus Jakarta Sans', monospace, sans-serif;
+            font-family: 'Noto Sans Bengali', system-ui, -apple-system, sans-serif;
         }
         .file-badge-item span {
             font-size: 11px;
@@ -1277,22 +1115,13 @@
 
 <!-- Modern App Bar -->
 <div class="app-bar">
-    <div style="display: flex; gap: 8px; align-items: center;">
-        <button class="icon-btn" onclick="openGroupManagementModal()" title="📁 গোষ্ঠী তৈরি ও পরিচালনা করুন" aria-label="গোষ্ঠী পরিচালনা">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
-                <line x1="12" y1="11" x2="12" y2="17"></line>
-                <line x1="9" y1="14" x2="15" y2="14"></line>
-            </svg>
-        </button>
-        <button class="icon-btn" onclick="openDataHub('import')" title="💾 ডেটা হাব (ইমপোর্ট, এক্সপোর্ট ও ব্যাকআপ)" aria-label="ডেটা হাব">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                <polyline points="7 10 12 15 17 10"></polyline>
-                <line x1="12" y1="15" x2="12" y2="3"></line>
-            </svg>
-        </button>
-    </div>
+    <button class="icon-btn" onclick="openDataHub('import')" title="💾 ডেটা হাব (ইমপোর্ট, এক্সপোর্ট ও ব্যাকআপ)" aria-label="ডেটা হাব">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>
+    </button>
     <div class="app-bar-brand">
         <div class="brand-icon-wrapper">
             <svg viewBox="0 0 24 24" fill="currentColor">
@@ -1349,23 +1178,9 @@
         </select>
 
         <div class="filter-row">
-            <div class="filter-select-wrapper" style="flex: 1;">
-                <select id="filterGroup" onchange="displayCustomers()">
-                    <option value="All">সব গোষ্ঠী</option>
-                </select>
-                <div class="select-arrow">▼</div>
-            </div>
-            <button type="button" class="group-shortcut-btn" onclick="openGroupManagementModal()" title="গোষ্ঠী তৈরি ও পরিচালনা">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
-                    <line x1="12" y1="11" x2="12" y2="17"></line>
-                    <line x1="9" y1="14" x2="15" y2="14"></line>
-                </svg>
-                <span>গোষ্ঠী</span>
-            </button>
-            <div class="filter-select-wrapper" style="flex: 1;">
+            <div class="filter-select-wrapper" style="width: 100%;">
                 <select id="filterDate" onchange="displayCustomers()">
-                    <option value="All">সব তারিখ</option>
+                    <option value="All">সব তারিখ (বিলের শেষ সময়)</option>
                 </select>
                 <div class="select-arrow">▼</div>
             </div>
@@ -1388,50 +1203,6 @@
         <line x1="5" y1="12" x2="19" y2="12"></line>
     </svg>
 </button>
-
-<!-- Dedicated Group Management Modal -->
-<div id="groupManageModal" class="modal">
-    <div class="modal-content" style="max-width: 460px;">
-        <div class="sheet-drag-handle"></div>
-        <div class="close-btn" onclick="closeModal()">✕</div>
-        
-        <div style="text-align: center; margin-bottom: 14px;">
-            <div style="width: 44px; height: 44px; border-radius: 12px; background: #EEF2FF; color: var(--primary); display: inline-flex; align-items: center; justify-content: center; margin-bottom: 6px;">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
-                    <line x1="12" y1="11" x2="12" y2="17"></line>
-                    <line x1="9" y1="14" x2="15" y2="14"></line>
-                </svg>
-            </div>
-            <h3 style="margin: 0; color: var(--text-main); font-size: 18px; font-weight: 700;">📁 গোষ্ঠী তৈরি ও পরিচালনা</h3>
-            <p style="margin: 3px 0 0; font-size: 12.5px; color: var(--text-muted);">গ্রাহকদের এলাকা বা বাড়ি অনুযায়ী আলাদা গ্রুপ তৈরি ও পরিচালনা করুন</p>
-        </div>
-
-        <!-- Distinct "Add Group" Highlighted Card -->
-        <div class="distinct-add-group-card">
-            <div class="distinct-add-title">
-                <span style="font-size: 15px;">✨</span>
-                <span>নতুন গোষ্ঠী যোগ করুন</span>
-            </div>
-            <div style="display: flex; gap: 8px; margin-top: 8px;">
-                <input type="text" id="dedicatedNewGroupInput" placeholder="যেমন: মোল্লা বাড়ি, মধ্যপাড়া..." style="margin: 0; flex: 1;">
-                <button type="button" class="primary-btn" style="margin: 0; width: auto; padding: 0 16px; min-height: 44px; white-space: nowrap; background: #4F46E5;" onclick="addDedicatedGroup()">
-                    + যুক্ত করুন
-                </button>
-            </div>
-        </div>
-
-        <!-- Existing Groups List with Counts & Actions -->
-        <div style="display: flex; justify-content: space-between; align-items: center; margin: 16px 0 8px;">
-            <span style="font-size: 13.5px; font-weight: 700; color: var(--text-main);">বিদ্যমান গোষ্ঠীসমূহ</span>
-            <span id="groupTotalCountBadge" style="font-size: 11.5px; background: #F1F5F9; color: var(--text-muted); padding: 3px 8px; border-radius: 20px; font-weight: 600;">০টি গোষ্ঠী</span>
-        </div>
-        
-        <div id="dedicatedGroupList" class="dedicated-group-list">
-            <!-- Dynamically populated -->
-        </div>
-    </div>
-</div>
 
 <!-- Add Customer Modal (Cleaned up and dedicated to Customer Info) -->
 <div id="addModal" class="modal">
@@ -1463,14 +1234,6 @@
         <span class="form-label">বিলের শেষ তারিখ (১ থেকে ৩১) *</span>
         <input type="number" id="cDueDate" placeholder="যেমন: ১৮, ২৫, ৩০" min="1" max="31">
         
-        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 6px;">
-            <span class="form-label" style="margin-top: 0;">গোষ্ঠী নির্বাচন করুন *</span>
-            <button type="button" onclick="openGroupManagementModal()" style="background: none; border: none; font-size: 12px; color: var(--primary); font-weight: 600; cursor: pointer; padding: 0;">
-                + নতুন গোষ্ঠী তৈরি
-            </button>
-        </div>
-        <select id="cGroup"><option value="">গোষ্ঠী নির্বাচন করুন *</option></select>
-        
         <button class="primary-btn" id="saveBtn" onclick="saveCustomer()">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
@@ -1482,7 +1245,7 @@
     </div>
 </div>
 
-<!-- Settings Modal (Backup/Restore & Group Edit) -->
+<!-- Settings Modal (Backup/Restore) -->
 <div id="settingsModal" class="modal">
     <div class="modal-content">
         <div class="sheet-drag-handle"></div>
@@ -1510,13 +1273,6 @@
             </svg>
             আধুনিক ডেটা হাব খুলুন (ইমপোর্ট ও এক্সপোর্ট)
         </button>
-
-        <div class="accordion-header" onclick="toggleGroupList()">
-            <span>📁 গোষ্ঠী ম্যানেজমেন্ট</span>
-            <span id="groupToggleIcon">▼</span>
-        </div>
-        <div class="manage-box" id="settingsGroupList"></div>
-        <div id="groupHintText" style="font-size: 12px; color: var(--text-muted); text-align: center; margin-top:8px; display:none;">এডিট বা ডিলিট করতে নামের ওপর চেপে ধরুন</div>
     </div>
 </div>
 
@@ -1567,14 +1323,10 @@
                     <button class="export-btn" style="padding: 4px 8px; font-size: 11.5px;" onclick="resetDataHubFileInput()">বাতিল</button>
                 </div>
 
-                <div class="file-badge-grid">
+                <div class="file-badge-grid" style="grid-template-columns: 1fr;">
                     <div class="file-badge-item">
                         <strong id="previewCustomerCount">0</strong>
-                        <span>জন গ্রাহক পাওয়া গেছে</span>
-                    </div>
-                    <div class="file-badge-item">
-                        <strong id="previewGroupCount">0</strong>
-                        <span>টি গোষ্ঠী পাওয়া গেছে</span>
+                        <span>জন গ্রাহকের তথ্য পাওয়া গেছে</span>
                     </div>
                 </div>
 
@@ -1608,7 +1360,7 @@
         <!-- 2. EXPORT SECTION -->
         <div id="dataHubSectionExport" style="display: none;">
             <div style="background: #F8FAFC; border: 1px solid var(--border-color); border-radius: 12px; padding: 10px 14px; margin-bottom: 14px; text-align: center; font-size: 12.5px; color: var(--text-muted);">
-                বর্তমানে অ্যাপে মোট <strong id="exportTotalCount" style="color:var(--primary);">0</strong> জন গ্রাহক ও <strong id="exportGroupCount" style="color:var(--primary);">0</strong> টি গোষ্ঠী সংরক্ষিত আছে।
+                বর্তমানে অ্যাপে মোট <strong id="exportTotalCount" style="color:var(--primary);">0</strong> জন গ্রাহকের তথ্য সংরক্ষিত আছে।
             </div>
 
             <!-- Option 1: Full JSON Backup -->
@@ -1618,7 +1370,7 @@
                         <span>📁 সম্পূর্ণ ব্যাকআপ ফাইল</span>
                         <span style="background: #EEF2FF; color: var(--primary); font-size: 10px; padding: 2px 6px; border-radius: 6px; font-weight: 700;">.JSON</span>
                     </div>
-                    <div class="export-card-desc">সব গ্রাহক ও গোষ্ঠীর সম্পূর্ণ ডাটা। অন্য যে কোনো ফোনে রিস্টোর করার জন্য আদর্শ।</div>
+                    <div class="export-card-desc">সব গ্রাহকের সম্পূর্ণ ডাটা। অন্য যে কোনো ফোনে রিস্টোর করার জন্য আদর্শ।</div>
                 </div>
                 <button class="export-btn export-btn-primary" onclick="exportData()">
                     ডাউনলোড
@@ -1814,17 +1566,6 @@
     </div>
 </div>
 
-<!-- Action Modal for Groups -->
-<div id="groupActionModal" class="modal top-modal">
-    <div class="action-sheet-content">
-        <div class="sheet-drag-handle"></div>
-        <h3 id="actionGroupName" style="margin-top:0; margin-bottom: 18px; color:var(--text-main); font-size: 17px; font-weight:700;">গোষ্ঠী অপশন</h3>
-        <button class="action-sheet-btn action-edit" onclick="triggerGroupEdit()">✏️ নাম পরিবর্তন</button>
-        <button class="action-sheet-btn action-delete" onclick="triggerGroupDelete()">🗑️ মুছে ফেলুন</button>
-        <button class="action-sheet-btn action-cancel" onclick="closeModal()">বাতিল</button>
-    </div>
-</div>
-
 <!-- Confirm Modal (Replacement for window.confirm) -->
 <div id="confirmModal" class="modal top-modal">
     <div class="action-sheet-content">
@@ -1946,14 +1687,10 @@
     /* ==========================================
        Application State
        ========================================== */
-    let groups = ['শরীফ বাড়ি', 'ফরাজি বাড়ি'];
     let customers = [];
     let selectedCustomerId = null; 
-    let selectedGroupIndex = null;
-    let selectedGroupName = "";
     let currentUser = null;
     let unsubscribeCustomers = null;
-    let unsubscribeGroups = null;
 
     function getCurrentMonthStr() {
         let d = new Date();
@@ -1961,11 +1698,7 @@
     }
 
     function loadLocalData() {
-        let savedGroups = localStorage.getItem('billGroups');
         let savedCustomers = localStorage.getItem('billCustomers');
-        if (savedGroups) {
-            try { groups = JSON.parse(savedGroups); } catch(e){}
-        }
         if (savedCustomers) {
             try {
                 customers = JSON.parse(savedCustomers);
@@ -1981,21 +1714,17 @@
     }
 
     function saveData() {
-        localStorage.setItem('billGroups', JSON.stringify(groups));
         localStorage.setItem('billCustomers', JSON.stringify(customers));
+        localStorage.setItem('billGroups', JSON.stringify(groups));
     }
 
     function updateUI() { 
         updateDropdowns(); 
         displayCustomers(); 
-        renderSettingsGroupList(); 
-        renderDedicatedGroupList();
     }
 
-    function getGroupId(groupName) {
-        let slug = encodeURIComponent(groupName).replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 50);
-        let hash = Math.abs(groupName.split('').reduce((a, b) => { a = ((a << 5) - a) + b.charCodeAt(0); return a & a; }, 0));
-        return `grp_${slug}_${hash}`;
+    function isCustomerPaidThisMonth(c) {
+        return c && c.lastPaidMonth === getCurrentMonthStr();
     }
 
     /* ==========================================
@@ -2036,32 +1765,6 @@
         }
     }
 
-    async function saveGroupToFirestore(groupName) {
-        if (!currentUser) return;
-        const gId = getGroupId(groupName);
-        const path = `users/${currentUser.uid}/groups/${gId}`;
-        try {
-            await setDoc(doc(db, 'users', currentUser.uid, 'groups', gId), {
-                id: gId,
-                name: String(groupName).slice(0, 100),
-                userId: currentUser.uid
-            });
-        } catch (err) {
-            handleFirestoreError(err, OperationType.WRITE, path);
-        }
-    }
-
-    async function deleteGroupFromFirestore(groupName) {
-        if (!currentUser) return;
-        const gId = getGroupId(groupName);
-        const path = `users/${currentUser.uid}/groups/${gId}`;
-        try {
-            await deleteDoc(doc(db, 'users', currentUser.uid, 'groups', gId));
-        } catch (err) {
-            handleFirestoreError(err, OperationType.DELETE, path);
-        }
-    }
-
     async function syncAllLocalToCloud() {
         if (!currentUser) {
             loginWithGoogle();
@@ -2069,9 +1772,6 @@
         }
         showToast("সব ডাটা ক্লাউডে সিঙ্ক হচ্ছে...");
         try {
-            for (const g of groups) {
-                await saveGroupToFirestore(g);
-            }
             for (const c of customers) {
                 await saveCustomerToFirestore(c);
             }
@@ -2356,33 +2056,9 @@
         updateAuthUI(user);
 
         if (unsubscribeCustomers) { unsubscribeCustomers(); unsubscribeCustomers = null; }
-        if (unsubscribeGroups) { unsubscribeGroups(); unsubscribeGroups = null; }
 
         if (user) {
             showToast(`স্বাগতম! অনলাইন ক্লাউড সিঙ্ক চালু হয়েছে`);
-
-            // Listen to groups in real-time across devices
-            const groupsPath = `users/${user.uid}/groups`;
-            unsubscribeGroups = onSnapshot(collection(db, 'users', user.uid, 'groups'), (snapshot) => {
-                const cloudGroups = [];
-                snapshot.forEach(docSnap => {
-                    const data = docSnap.data();
-                    if (data.name && !cloudGroups.includes(data.name)) {
-                        cloudGroups.push(data.name);
-                    }
-                });
-                if (cloudGroups.length > 0) {
-                    groups = cloudGroups;
-                    saveData();
-                    updateUI();
-                } else if (groups.length > 0) {
-                    for (const g of groups) {
-                        saveGroupToFirestore(g);
-                    }
-                }
-            }, (error) => {
-                handleFirestoreError(error, OperationType.GET, groupsPath);
-            });
 
             // Listen to customers in real-time across devices
             const custPath = `users/${user.uid}/customers`;
@@ -2427,15 +2103,11 @@
     let activeModal = null;
 
     function openModal(modalId) {
-        document.getElementById(modalId).style.display = 'flex';
+        const modal = document.getElementById(modalId);
+        if (!modal) return;
+        modal.style.display = 'flex';
         activeModal = modalId;
         window.history.pushState({ modalOpen: true }, "", "#" + modalId);
-        
-        if(modalId === 'settingsModal') {
-            document.getElementById('settingsGroupList').style.display = 'none';
-            document.getElementById('groupHintText').style.display = 'none';
-            document.getElementById('groupToggleIcon').innerText = '▼';
-        }
     }
 
     function closeModal() {
@@ -2523,237 +2195,17 @@
     }
 
     /* ==========================================
-       গ্রাহক ও গোষ্ঠী পরিচালনা
+       গ্রাহক পরিচালনা ও ড্রপডাউন
        ========================================== */
-    function toggleGroupList() {
-        let list = document.getElementById('settingsGroupList'), 
-            hint = document.getElementById('groupHintText'), 
-            icon = document.getElementById('groupToggleIcon');
-        if (list.style.display === 'none' || list.style.display === '') {
-            list.style.display = 'block'; hint.style.display = 'block'; icon.innerText = '▲';
-        } else {
-            list.style.display = 'none'; hint.style.display = 'none'; icon.innerText = '▼';
-        }
-    }
-
     function updateDropdowns() {
-        let cGroup = document.getElementById('cGroup'), filterGroup = document.getElementById('filterGroup');
-        cGroup.innerHTML = '<option value="">গোষ্ঠী নির্বাচন করুন *</option>';
-        filterGroup.innerHTML = '<option value="All">সব গোষ্ঠী</option>';
-        groups.forEach(g => { 
-            cGroup.innerHTML += `<option value="${g}">${g}</option>`; 
-            filterGroup.innerHTML += `<option value="${g}">${g}</option>`; 
-        });
-
         let filterDate = document.getElementById('filterDate');
+        if (!filterDate) return;
         filterDate.innerHTML = '<option value="All">সব তারিখ</option>';
         let uniqueDates = [...new Set(customers.map(c => c.dueDate).filter(d => d))];
         uniqueDates.sort((a, b) => parseInt(a) - parseInt(b));
         uniqueDates.forEach(d => {
             filterDate.innerHTML += `<option value="${d}">${d} তারিখ</option>`;
         });
-    }
-
-    function renderSettingsGroupList() {
-        let groupList = document.getElementById('settingsGroupList');
-        groupList.innerHTML = '';
-        groups.forEach((g, index) => {
-            let item = document.createElement('div');
-            item.className = 'manage-item'; 
-            item.innerText = g;
-            let pressTimer;
-            const startPress = () => {
-                pressTimer = setTimeout(() => {
-                    selectedGroupIndex = index; selectedGroupName = g;
-                    document.getElementById('actionGroupName').innerText = g;
-                    openModal('groupActionModal');
-                }, 500);
-            };
-            const cancelPress = () => clearTimeout(pressTimer);
-            item.addEventListener('mousedown', startPress); item.addEventListener('mouseup', cancelPress); item.addEventListener('mouseleave', cancelPress);
-            item.addEventListener('touchstart', startPress); item.addEventListener('touchend', cancelPress); item.addEventListener('touchmove', cancelPress);
-            groupList.appendChild(item);
-        });
-    }
-
-    function triggerGroupEdit() {
-        closeModal();
-        setTimeout(() => {
-            showPromptDialog("গোষ্ঠীর নাম পরিবর্তন", selectedGroupName, async (newName) => {
-                if (newName && newName !== selectedGroupName) {
-                    if (groups.includes(newName)) { showToast("এই নামটি আগেই যুক্ত করা আছে!"); return; }
-                    let oldName = selectedGroupName;
-                    groups[selectedGroupIndex] = newName;
-                    customers.forEach(c => { if(c.group === oldName) c.group = newName; });
-                    saveData(); 
-                    updateUI(); 
-                    
-                    if (currentUser) {
-                        await deleteGroupFromFirestore(oldName);
-                        await saveGroupToFirestore(newName);
-                        customers.filter(c => c.group === newName).forEach(c => saveCustomerToFirestore(c));
-                    }
-                    showToast("নাম পরিবর্তন ও সিঙ্ক হয়েছে!");
-                }
-            });
-        }, 150);
-    }
-
-    function triggerGroupDelete() {
-        closeModal();
-        setTimeout(() => {
-            showConfirmDialog(
-                "গোষ্ঠী মুছুন",
-                `আপনি কি নিশ্চিতভাবে '${selectedGroupName}' গোষ্ঠী মুছে ফেলতে চান?`,
-                "মুছে ফেলুন",
-                async () => {
-                    let deletedName = selectedGroupName;
-                    groups.splice(selectedGroupIndex, 1); 
-                    saveData(); 
-                    updateUI(); 
-                    if (currentUser) {
-                        await deleteGroupFromFirestore(deletedName);
-                    }
-                    showToast("গোষ্ঠী মুছে ফেলা হয়েছে!");
-                }
-            );
-        }, 150);
-    }
-
-    /* Dedicated Group Management Methods */
-    function openGroupManagementModal() {
-        renderDedicatedGroupList();
-        openModal('groupManageModal');
-        setTimeout(() => {
-            const inp = document.getElementById('dedicatedNewGroupInput');
-            if (inp) inp.focus();
-        }, 200);
-    }
-
-    function renderDedicatedGroupList() {
-        const list = document.getElementById('dedicatedGroupList');
-        const badge = document.getElementById('groupTotalCountBadge');
-        if (!list) return;
-
-        list.innerHTML = '';
-        if (badge) badge.innerText = `${groups.length}টি গোষ্ঠী`;
-
-        if (groups.length === 0) {
-            list.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 20px; font-size: 13px;">কোনো গোষ্ঠী তৈরি করা হয়নি। উপরের বক্সে নাম লিখে যোগ করুন।</div>`;
-            return;
-        }
-
-        groups.forEach((g, index) => {
-            const count = customers.filter(c => c.group === g).length;
-            const row = document.createElement('div');
-            row.className = 'group-row-item';
-            row.innerHTML = `
-                <div class="group-row-info">
-                    <span style="font-size: 16px;">📁</span>
-                    <div style="min-width: 0;">
-                        <div class="group-row-name">${g}</div>
-                        <span class="group-row-count">${count} জন গ্রাহক</span>
-                    </div>
-                </div>
-                <div class="group-action-btn-wrap">
-                    <button type="button" class="group-small-btn edit" onclick="editGroupAt(${index})" title="নাম পরিবর্তন করুন" aria-label="এডিট">
-                        ✏️
-                    </button>
-                    <button type="button" class="group-small-btn delete" onclick="deleteGroupAt(${index})" title="গোষ্ঠী মুছে ফেলুন" aria-label="মুছুন">
-                        🗑️
-                    </button>
-                </div>
-            `;
-            list.appendChild(row);
-        });
-    }
-
-    async function addDedicatedGroup() {
-        const input = document.getElementById('dedicatedNewGroupInput');
-        const val = input ? input.value.trim() : '';
-        if (!val) {
-            showToast("গোষ্ঠীর একটি সঠিক নাম লিখুন");
-            return;
-        }
-        if (groups.includes(val)) {
-            showToast("এই গোষ্ঠী আগেই তৈরি করা আছে!");
-            return;
-        }
-
-        groups.push(val);
-        saveData();
-        updateUI();
-        if (currentUser) {
-            await saveGroupToFirestore(val);
-        }
-        if (input) input.value = '';
-        notifyRealtimeBackup("📁 নতুন গোষ্ঠী যুক্ত ও ব্যাকআপ হয়েছে!");
-    }
-
-    function editGroupAt(index) {
-        const oldName = groups[index];
-        showPromptDialog("গোষ্ঠীর নাম পরিবর্তন", oldName, async (newName) => {
-            if (newName && newName !== oldName) {
-                if (groups.includes(newName)) {
-                    showToast("এই নামটি আগেই যুক্ত করা আছে!");
-                    return;
-                }
-                groups[index] = newName;
-                customers.forEach(c => {
-                    if (c.group === oldName) c.group = newName;
-                });
-                saveData();
-                updateUI();
-                if (currentUser) {
-                    await deleteGroupFromFirestore(oldName);
-                    await saveGroupToFirestore(newName);
-                    customers.filter(c => c.group === newName).forEach(c => saveCustomerToFirestore(c));
-                }
-                notifyRealtimeBackup("📁 গোষ্ঠী নাম পরিবর্তন ও সিঙ্ক সম্পন্ন!");
-            }
-        });
-    }
-
-    function deleteGroupAt(index) {
-        const targetName = groups[index];
-        const memberCount = customers.filter(c => c.group === targetName).length;
-        let confirmMsg = `আপনি কি নিশ্চিতভাবে '${targetName}' গোষ্ঠী মুছে ফেলতে চান?`;
-        if (memberCount > 0) {
-            confirmMsg += ` (এই গোষ্ঠীর অধীনে ${memberCount} জন গ্রাহক আছেন)`;
-        }
-
-        showConfirmDialog(
-            "গোষ্ঠী মুছুন",
-            confirmMsg,
-            "মুছে ফেলুন",
-            async () => {
-                groups.splice(index, 1);
-                saveData();
-                updateUI();
-                if (currentUser) {
-                    await deleteGroupFromFirestore(targetName);
-                }
-                notifyRealtimeBackup("🗑️ গোষ্ঠী মুছে ফেলা হয়েছে ও সিঙ্ক সম্পন্ন!");
-            }
-        );
-    }
-
-    async function addGroup() {
-        let newGroup = document.getElementById('newGroup') ? document.getElementById('newGroup').value.trim() : '';
-        if (newGroup && !groups.includes(newGroup)) {
-            groups.push(newGroup); 
-            saveData(); 
-            updateUI();
-            if (currentUser) {
-                await saveGroupToFirestore(newGroup);
-            }
-            if (document.getElementById('newGroup')) document.getElementById('newGroup').value = ''; 
-            notifyRealtimeBackup("📁 নতুন গোষ্ঠী যুক্ত ও ব্যাকআপ হয়েছে!");
-        } else if (groups.includes(newGroup)) {
-            showToast("এই গোষ্ঠী আগেই যুক্ত করা আছে!");
-        } else {
-            showToast('সঠিক নাম দিন।');
-        }
     }
 
     async function saveCustomer() {
@@ -2764,10 +2216,9 @@
             address = document.getElementById('cAddress').value.trim(), 
             mobile = document.getElementById('cMobile').value.trim(), 
             sms = document.getElementById('cSms').value.trim(), 
-            dueDate = document.getElementById('cDueDate').value.trim(), 
-            group = document.getElementById('cGroup').value;
+            dueDate = document.getElementById('cDueDate').value.trim();
 
-        if (name && mobile && sms && dueDate && group) {
+        if (name && mobile && sms && dueDate) {
             if (parseInt(dueDate) < 1 || parseInt(dueDate) > 31) {
                 showToast("দয়া করে ১ থেকে ৩১ এর মধ্যে একটি সঠিক তারিখ দিন।");
                 return;
@@ -2778,11 +2229,12 @@
                 let index = customers.findIndex(c => String(c.id) === String(id));
                 if (index !== -1) {
                     let oldPaidMonth = customers[index].lastPaidMonth;
-                    targetCustomer = { id: parseFloat(id), name, father, mother, address, mobile, sms, dueDate, group, lastPaidMonth: oldPaidMonth };
+                    let existingGroup = customers[index].group || "";
+                    targetCustomer = { id: parseFloat(id), name, father, mother, address, mobile, sms, dueDate, group: existingGroup, lastPaidMonth: oldPaidMonth };
                     customers[index] = targetCustomer;
                 }
             } else {
-                targetCustomer = { id: Date.now(), name, father, mother, address, mobile, sms, dueDate, group, lastPaidMonth: "" };
+                targetCustomer = { id: Date.now(), name, father, mother, address, mobile, sms, dueDate, group: "", lastPaidMonth: "" };
                 customers.push(targetCustomer);
             }
             saveData(); 
@@ -2794,7 +2246,7 @@
             }
             notifyRealtimeBackup(isEdit ? "✅ গ্রাহকের তথ্য আপডেট ও ক্লাউডে ব্যাকআপ হয়েছে!" : "✅ নতুন গ্রাহক যোগ ও ক্লাউডে ব্যাকআপ সম্পন্ন!");
         } else { 
-            showToast('দয়া করে নাম, মোবাইল নম্বর, SMS অ্যাকাউন্ট, বিলের শেষ তারিখ এবং গোষ্ঠী পূরণ করুন।'); 
+            showToast('দয়া করে নাম, মোবাইল নম্বর, SMS অ্যাকাউন্ট ও বিলের শেষ তারিখ পূরণ করুন।'); 
         }
     }
 
@@ -2832,7 +2284,6 @@
                 document.getElementById('cMobile').value = c.mobile || ''; 
                 document.getElementById('cSms').value = c.sms; 
                 document.getElementById('cDueDate').value = c.dueDate || ''; 
-                document.getElementById('cGroup').value = c.group;
                 
                 document.getElementById('formTitle').innerText = "গ্রাহকের তথ্য আপডেট করুন"; 
                 document.getElementById('saveBtn').innerHTML = `
@@ -2880,7 +2331,6 @@
         document.getElementById('cMobile').value = ''; 
         document.getElementById('cSms').value = ''; 
         document.getElementById('cDueDate').value = ''; 
-        document.getElementById('cGroup').value = '';
         document.getElementById('formTitle').innerText = "নতুন গ্রাহক যোগ করুন"; 
         document.getElementById('saveBtn').innerHTML = `
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -2899,9 +2349,7 @@
 
     function openDataHub(tab = 'import') {
         const totalElem = document.getElementById('exportTotalCount');
-        const groupElem = document.getElementById('exportGroupCount');
         if (totalElem) totalElem.innerText = customers.length;
-        if (groupElem) groupElem.innerText = groups.length;
 
         resetDataHubFileInput();
         switchDataHubTab(tab);
@@ -2940,21 +2388,29 @@
         reader.onload = function(e) {
             try {
                 const parsed = JSON.parse(e.target.result);
-                if (!parsed.groups || !parsed.customers) {
-                    showToast("ভুল ফরম্যাট! ফাইলে groups ও customers থাকতে হবে।");
+                let customerList = [];
+                if (Array.isArray(parsed)) {
+                    customerList = parsed;
+                } else if (parsed && Array.isArray(parsed.customers)) {
+                    customerList = parsed.customers;
+                } else {
+                    showToast("ভুল ফরম্যাট! ফাইলে গ্রাহকদের তথ্য পাওয়া যায়নি।");
                     return;
                 }
-                selectedImportData = parsed;
+
+                // Compatibility: safely retain legacy groups if any, but do not require them
+                selectedImportData = {
+                    customers: customerList,
+                    groups: Array.isArray(parsed.groups) ? parsed.groups : []
+                };
 
                 const nameElem = document.getElementById('previewFileName');
                 const sizeElem = document.getElementById('previewFileSize');
                 const custElem = document.getElementById('previewCustomerCount');
-                const grpElem = document.getElementById('previewGroupCount');
 
                 if (nameElem) nameElem.innerText = file.name;
                 if (sizeElem) sizeElem.innerText = (file.size / 1024).toFixed(1) + " KB";
-                if (custElem) custElem.innerText = parsed.customers.length;
-                if (grpElem) grpElem.innerText = parsed.groups.length;
+                if (custElem) custElem.innerText = customerList.length;
 
                 const dropZone = document.getElementById('dataHubDropZone');
                 const previewCard = document.getElementById('dataHubFilePreview');
@@ -2984,24 +2440,35 @@
         }
 
         const mode = document.querySelector('input[name="importMergeMode"]:checked')?.value || 'merge';
-        const newGroups = selectedImportData.groups || [];
-        const newCustomers = selectedImportData.customers || [];
+        const rawCustomers = selectedImportData.customers || [];
+
+        // Normalize each customer for complete backwards compatibility (supporting old JSON schemas)
+        const normalizedCustomers = rawCustomers.map((nc, i) => {
+            const rawId = nc.id ? (parseFloat(nc.id) || nc.id) : (Date.now() + i);
+            return {
+                id: rawId,
+                name: String(nc.name || '').trim(),
+                father: String(nc.father || nc.fatherName || '').trim(),
+                mother: String(nc.mother || nc.motherName || '').trim(),
+                address: String(nc.address || '').trim(),
+                mobile: String(nc.mobile || '').trim(),
+                sms: String(nc.sms || nc.smsAccount || nc.meterNumber || '').trim(),
+                dueDate: String(nc.dueDate || '').trim(),
+                group: String(nc.group || '').trim(),
+                lastPaidMonth: String(nc.lastPaidMonth || '').trim()
+            };
+        });
 
         if (mode === 'replace') {
-            groups = newGroups;
-            customers = newCustomers;
+            customers = normalizedCustomers;
         } else {
-            // Smart Merge: Keep existing, append non-existing
-            for (const g of newGroups) {
-                if (!groups.includes(g)) {
-                    groups.push(g);
-                }
-            }
-            for (const nc of newCustomers) {
+            // Smart Merge: Keep existing, match by id, mobile, sms, or (name + father)
+            for (const nc of normalizedCustomers) {
                 const idx = customers.findIndex(c => 
-                    (nc.id && c.id === nc.id) || 
-                    (c.mobile && nc.mobile && c.mobile === nc.mobile) ||
-                    (c.name && nc.name && c.name === nc.name && c.fatherName === nc.fatherName)
+                    (nc.id && String(c.id) === String(nc.id)) || 
+                    (c.mobile && nc.mobile && String(c.mobile).trim() === String(nc.mobile).trim()) ||
+                    (c.sms && nc.sms && String(c.sms).trim() === String(nc.sms).trim()) ||
+                    (c.name && nc.name && c.name.trim() === nc.name.trim() && (c.father || '').trim() === (nc.father || '').trim())
                 );
                 if (idx >= 0) {
                     customers[idx] = { ...customers[idx], ...nc };
@@ -3024,9 +2491,6 @@
         if (currentUser) {
             try {
                 showToast("ক্লাউডে সিঙ্ক হচ্ছে...");
-                for (const g of groups) {
-                    await saveGroupToFirestore(g);
-                }
                 for (const c of customers) {
                     await saveCustomerToFirestore(c);
                 }
@@ -3047,7 +2511,7 @@
     }
 
     function exportData() {
-        const data = { groups: groups, customers: customers };
+        const data = { customers: customers, groups: [] };
         const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a'); 
@@ -3064,7 +2528,7 @@
             return;
         }
 
-        const headers = ["ক্রমিক", "গ্রাহকের নাম", "পিতার নাম", "মাতার নাম", "ঠিকানা", "মোবাইল নম্বর", "এসএমএস হিসাব নং", "মিটার নং", "বিল পরিশোধ শেষ তারিখ", "গোষ্ঠী", "বিলের অবস্থা"];
+        const headers = ["ক্রমিক", "গ্রাহকের নাম", "পিতার নাম", "মাতার নাম", "ঠিকানা", "মোবাইল নম্বর", "SMS একাউন্ট / মিটার নং", "বিল পরিশোধ শেষ তারিখ", "বিলের অবস্থা"];
         
         const escapeCSV = (field) => {
             if (field === null || field === undefined) return '""';
@@ -3077,14 +2541,12 @@
             return [
                 index + 1,
                 c.name || "",
-                c.fatherName || "",
-                c.motherName || "",
+                c.father || c.fatherName || "",
+                c.mother || c.motherName || "",
                 c.address || "",
                 c.mobile || "",
-                c.smsAccount || "",
-                c.meterNumber || "",
+                c.sms || c.smsAccount || c.meterNumber || "",
                 c.dueDate || "",
-                c.group || "সাধারণ",
                 statusText
             ].map(escapeCSV).join(",");
         });
@@ -3118,7 +2580,7 @@
         unpaid.forEach((c, i) => {
             summary += `${i + 1}. ${c.name}`;
             if (c.mobile) summary += ` | মোবা: ${c.mobile}`;
-            if (c.smsAccount) summary += ` | SMS: ${c.smsAccount}`;
+            if (c.sms || c.smsAccount) summary += ` | SMS: ${c.sms || c.smsAccount}`;
             if (c.dueDate) summary += ` | শেষ তারিখ: ${c.dueDate}`;
             summary += `\n`;
         });
@@ -3247,30 +2709,36 @@
     }
 
     function displayCustomers() {
-        let searchQuery = document.getElementById('searchInput').value.toLowerCase().trim();
-        let filterGroup = document.getElementById('filterGroup').value;
-        let filterDate = document.getElementById('filterDate').value;
-        let filterStatus = document.getElementById('filterStatus').value;
+        let searchInput = document.getElementById('searchInput');
+        let searchQuery = searchInput ? searchInput.value.toLowerCase().trim() : '';
+        let filterDateElem = document.getElementById('filterDate');
+        let filterDate = filterDateElem ? filterDateElem.value : 'All';
+        let filterStatusElem = document.getElementById('filterStatus');
+        let filterStatus = filterStatusElem ? filterStatusElem.value : 'All';
         
         let listContainer = document.getElementById('customerList');
         let countBox = document.getElementById('customerCountBox');
+        if (!listContainer || !countBox) return;
+
         let currentMonth = getCurrentMonthStr();
         
         listContainer.innerHTML = '';
         
         let filtered = customers.filter(c => {
             let isPaid = c.lastPaidMonth === currentMonth;
-            let matchSearch = (c.name || '').toLowerCase().includes(searchQuery) || 
+            let matchSearch = !searchQuery || 
+                              (c.name || '').toLowerCase().includes(searchQuery) || 
                               (c.mobile || '').toLowerCase().includes(searchQuery) ||
-                              (c.sms || '').toLowerCase().includes(searchQuery);
-            let matchGroup = (filterGroup === 'All') || (c.group === filterGroup);
+                              (c.sms || '').toLowerCase().includes(searchQuery) ||
+                              (c.father || '').toLowerCase().includes(searchQuery) ||
+                              (c.address || '').toLowerCase().includes(searchQuery);
             let matchDate = (filterDate === 'All') || (c.dueDate === filterDate);
             
             let matchStatus = true;
             if (filterStatus === 'Paid') matchStatus = isPaid;
             if (filterStatus === 'Unpaid') matchStatus = !isPaid;
             
-            return matchSearch && matchGroup && matchDate && matchStatus;
+            return matchSearch && matchDate && matchStatus;
         });
 
         // Summary Counts Calculation
@@ -3304,7 +2772,6 @@
                         <span class="serial-badge ${isPaid ? 'paid-badge' : ''}">${isPaid ? '✓' : (index + 1)}</span>
                         <div class="card-name">${c.name}</div>
                     </div>
-                    <div class="group-tag">${c.group}</div>
                 </div>
                 
                 <div class="card-details">
@@ -3425,10 +2892,6 @@
     window.openModal = openModal;
     window.closeModal = closeModal;
     window.openAccountModal = openAccountModal;
-    window.openGroupManagementModal = openGroupManagementModal;
-    window.addDedicatedGroup = addDedicatedGroup;
-    window.editGroupAt = editGroupAt;
-    window.deleteGroupAt = deleteGroupAt;
     window.handleSyncBarClick = handleSyncBarClick;
     window.notifyRealtimeBackup = notifyRealtimeBackup;
     window.handleSettingsAuthClick = handleSettingsAuthClick;
@@ -3449,14 +2912,10 @@
     window.executeDataHubImport = executeDataHubImport;
     window.exportCSV = exportCSV;
     window.copyUnpaidSummary = copyUnpaidSummary;
-    window.addGroup = addGroup;
     window.saveCustomer = saveCustomer;
     window.triggerPaymentToggle = triggerPaymentToggle;
     window.triggerEdit = triggerEdit;
     window.triggerDelete = triggerDelete;
-    window.triggerGroupEdit = triggerGroupEdit;
-    window.triggerGroupDelete = triggerGroupDelete;
-    window.toggleGroupList = toggleGroupList;
     window.exportData = exportData;
     window.importData = executeDataHubImport;
     window.copyText = copyText;
