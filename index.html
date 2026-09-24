@@ -1225,11 +1225,11 @@
         <span class="form-label">ঠিকানা</span>
         <input type="text" id="cAddress" placeholder="গ্রাম / পাড়া / বাড়ি">
         
-        <span class="form-label">মোবাইল নম্বর *</span>
-        <input type="number" id="cMobile" placeholder="017xxxxxxxx">
+        <span class="form-label">মোবাইল নম্বর (১১ ডিজিট) *</span>
+        <input type="tel" id="cMobile" placeholder="যেমন: 017xxxxxxxx (১১ ডিজিট)" maxlength="11" inputmode="numeric">
         
-        <span class="form-label">SMS অ্যাকাউন্ট / মিটার নাম্বার *</span>
-        <input type="number" id="cSms" placeholder="বিলের SMS অ্যাকাউন্ট নাম্বার">
+        <span class="form-label">SMS অ্যাকাউন্ট / মিটার নাম্বার (১৩ ডিজিট) *</span>
+        <input type="tel" id="cSms" placeholder="যেমন: 103xxxxxxxxxx (১৩ ডিজিট)" maxlength="13" inputmode="numeric">
         
         <span class="form-label">বিলের শেষ তারিখ (১ থেকে ৩১) *</span>
         <input type="number" id="cDueDate" placeholder="যেমন: ১৮, ২৫, ৩০" min="1" max="31">
@@ -2258,46 +2258,63 @@
             father = document.getElementById('cFather').value.trim(), 
             mother = document.getElementById('cMother').value.trim(), 
             address = document.getElementById('cAddress').value.trim(), 
-            mobile = document.getElementById('cMobile').value.trim(), 
-            sms = document.getElementById('cSms').value.trim(), 
+            rawMobile = document.getElementById('cMobile').value.trim(), 
+            rawSms = document.getElementById('cSms').value.trim(), 
             rawDueDate = document.getElementById('cDueDate').value.trim();
 
-        if (!name || !mobile || !sms || !rawDueDate) {
-            showToast('দয়া করে নাম, মোবাইল নম্বর, SMS অ্যাকাউন্ট ও বিলের শেষ তারিখ পূরণ করুন।');
+        if (!name) {
+            showToast('দয়া করে গ্রাহকের নাম লিখুন।');
             return;
         }
 
+        if (!rawMobile) {
+            showToast('দয়া করে ১১ ডিজিটের মোবাইল নম্বর দিন।');
+            return;
+        }
+
+        // ৩. মোবাইল নম্বরের মোট সংখ্যা অবশ্যই ঠিক ১১ টি হতে হবে (কম বা বেশি হলে অ্যাড হবে না)
+        let cleanMobile = toEnglishNum(rawMobile).replace(/\D/g, '');
+        if (cleanMobile.length !== 11) {
+            showToast(`⚠️ মোবাইল নম্বর অবশ্যই ঠিক ১১ ডিজিটের হতে হবে! (বর্তমানে ${toBengaliNum(cleanMobile.length)} ডিজিট রয়েছে)`);
+            return;
+        }
+
+        if (!rawSms) {
+            showToast('দয়া করে ১৩ ডিজিটের SMS অ্যাকাউন্ট / মিটার নম্বর দিন।');
+            return;
+        }
+
+        // ৪. এসএমএস অ্যাকাউন্ট নাম্বার এর মোট সংখ্যা অবশ্যই ঠিক ১৩ টি হতে হবে (কম বা বেশি হলে অ্যাড হবে না)
+        let cleanSms = toEnglishNum(rawSms).replace(/\D/g, '');
+        if (cleanSms.length !== 13) {
+            showToast(`⚠️ SMS অ্যাকাউন্ট নম্বর অবশ্যই ঠিক ১৩ ডিজিটের হতে হবে! (বর্তমানে ${toBengaliNum(cleanSms.length)} ডিজিট রয়েছে)`);
+            return;
+        }
+
+        // ১. একই এসএমএস একাউন্ট নাম্বার একাধিক গ্রাহক ব্যবহার করতে পারবে না (ডুপ্লিকেট হলে সতর্ক করবে ও আটকাবে)
+        let dupSms = customers.find(c => {
+            if (id && String(c.id) === String(id)) return false;
+            let existingSms = toEnglishNum(String(c.sms || '')).replace(/\D/g, '');
+            return existingSms === cleanSms;
+        });
+        if (dupSms) {
+            showToast(`⚠️ এই SMS অ্যাকাউন্ট নম্বরটি ইতিমধ্যে "${dupSms.name}" এর তথ্যে ব্যবহৃত হয়েছে!`);
+            return;
+        }
+
+        // ২. একই মোবাইল নম্বর একের অধিক গ্রাহক ব্যবহার করতে পারবে (কোনো বাধা নেই)
+
+        // বিলের তারিখ যাচাইকরণ (১ থেকে ৩১)
+        if (!rawDueDate) {
+            showToast('দয়া করে বিলের শেষ তারিখ দিন (১ থেকে ৩১)।');
+            return;
+        }
         let dueDateNum = parseInt(toEnglishNum(rawDueDate));
         if (isNaN(dueDateNum) || dueDateNum < 1 || dueDateNum > 31) {
             showToast("দয়া করে ১ থেকে ৩১ এর মধ্যে একটি সঠিক তারিখ দিন।");
             return;
         }
         let dueDate = String(dueDateNum);
-
-        // ২. ডুপ্লিকেট যাচাইকরণ: একই মোবাইল নম্বর বা SMS অ্যাকাউন্ট নম্বর অন্য গ্রাহকের তথ্যে থাকতে পারবে না
-        let cleanMobile = normalizePhone(mobile);
-        if (cleanMobile) {
-            let dupMobile = customers.find(c => {
-                if (id && String(c.id) === String(id)) return false;
-                return c.mobile && normalizePhone(c.mobile) === cleanMobile;
-            });
-            if (dupMobile) {
-                showToast(`⚠️ এই মোবাইল নম্বরটি ইতিমধ্যে "${dupMobile.name}" এর তথ্যে সংরক্ষিত আছে!`);
-                return;
-            }
-        }
-
-        let cleanSms = normalizeSms(sms);
-        if (cleanSms) {
-            let dupSms = customers.find(c => {
-                if (id && String(c.id) === String(id)) return false;
-                return c.sms && normalizeSms(c.sms) === cleanSms;
-            });
-            if (dupSms) {
-                showToast(`⚠️ এই SMS অ্যাকাউন্ট / মিটার নম্বরটি ইতিমধ্যে "${dupSms.name}" এর তথ্যে সংরক্ষিত আছে!`);
-                return;
-            }
-        }
 
         // ৩. তাৎক্ষণিক অপ্টিমিস্টিক আপডেট (কোনো লোডিং বা বিলম্ব নেই - সাথে সাথে সেভ ও ডিসপ্লে)
         let targetCustomer = null;
@@ -2307,11 +2324,33 @@
             if (index !== -1) {
                 let oldPaidMonth = customers[index].lastPaidMonth;
                 let existingGroup = customers[index].group || "";
-                targetCustomer = { id: parseFloat(id), name, father, mother, address, mobile, sms, dueDate, group: existingGroup, lastPaidMonth: oldPaidMonth };
+                targetCustomer = { 
+                    id: parseFloat(id), 
+                    name, 
+                    father, 
+                    mother, 
+                    address, 
+                    mobile: cleanMobile, 
+                    sms: cleanSms, 
+                    dueDate, 
+                    group: existingGroup, 
+                    lastPaidMonth: oldPaidMonth 
+                };
                 customers[index] = targetCustomer;
             }
         } else {
-            targetCustomer = { id: Date.now(), name, father, mother, address, mobile, sms, dueDate, group: "", lastPaidMonth: "" };
+            targetCustomer = { 
+                id: Date.now(), 
+                name, 
+                father, 
+                mother, 
+                address, 
+                mobile: cleanMobile, 
+                sms: cleanSms, 
+                dueDate, 
+                group: "", 
+                lastPaidMonth: "" 
+            };
             customers.unshift(targetCustomer); // নতুন গ্রাহক তালিকায় একদম উপরে সাথে সাথে চলে আসবে
         }
 
@@ -2553,9 +2592,8 @@
             for (const nc of normalizedCustomers) {
                 const idx = customers.findIndex(c => 
                     (nc.id && String(c.id) === String(nc.id)) || 
-                    (c.mobile && nc.mobile && String(c.mobile).trim() === String(nc.mobile).trim()) ||
                     (c.sms && nc.sms && String(c.sms).trim() === String(nc.sms).trim()) ||
-                    (c.name && nc.name && c.name.trim() === nc.name.trim() && (c.father || '').trim() === (nc.father || '').trim())
+                    (c.name && nc.name && c.name.trim().toLowerCase() === nc.name.trim().toLowerCase() && (c.father || '').trim().toLowerCase() === (nc.father || '').trim().toLowerCase())
                 );
                 if (idx >= 0) {
                     customers[idx] = { ...customers[idx], ...nc };
