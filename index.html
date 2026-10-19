@@ -9,16 +9,16 @@
     <meta property="og:description" content="Electricity Bill - বিদ্যুৎ বিল ও গ্রাহকের তথ্য সহজে ট্র্যাক এবং পরিচালনা করার অ্যাপ্লিকেশন">
     
     <!-- PWA Links & Meta -->
-    <link rel="manifest" href="manifest.json">
+    <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#4F46E5">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="বিদ্যুৎ বিল">
-    <link rel="icon" type="image/png" sizes="192x192" href="pwa-192x192.png">
-    <link rel="icon" type="image/png" sizes="512x512" href="pwa-512x512.png">
-    <link rel="icon" type="image/png" href="icon.png">
-    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="./pwa-192x192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="./pwa-512x512.png">
+    <link rel="icon" type="image/png" href="./icon.png">
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png">
 
     <!-- Noto Sans Bengali font -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -31,7 +31,9 @@
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('./service-worker.js').catch(err => console.log(err));
+          navigator.serviceWorker.register('./service-worker.js', { scope: './' })
+            .then(reg => console.log('SW Registered:', reg.scope))
+            .catch(err => console.warn('SW Registration Error:', err));
         });
       }
     </script>
