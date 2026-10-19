@@ -1,0 +1,527 @@
+@import "tailwindcss";
+
+:root { 
+  --font-bengali: 'Noto Sans Bengali', system-ui, -apple-system, sans-serif;
+
+  /* Material Design 3 Light Theme Palette (Deep Indigo & Dynamic Tonal Surfaces) */
+  --md-sys-color-primary: #3F51B5; 
+  --md-sys-color-on-primary: #FFFFFF; 
+  --md-sys-color-primary-container: #E8EAF6;
+  --md-sys-color-on-primary-container: #1A237E;
+  
+  --md-sys-color-secondary: #475569;
+  --md-sys-color-on-secondary: #FFFFFF;
+  --md-sys-color-secondary-container: #F1F5F9;
+  --md-sys-color-on-secondary-container: #0F172A;
+
+  --md-sys-color-tertiary: #0284C7;
+  --md-sys-color-on-tertiary: #FFFFFF;
+  --md-sys-color-tertiary-container: #E0F2FE;
+  --md-sys-color-on-tertiary-container: #0369A1;
+
+  --md-sys-color-surface: #F8FAFC; 
+  --md-sys-color-surface-dim: #F1F5F9;
+  --md-sys-color-surface-container: #FFFFFF; 
+  --md-sys-color-surface-container-high: #F8FAFC; 
+  --md-sys-color-surface-container-highest: #E2E8F0; 
+
+  --md-sys-color-on-surface: #0F172A; 
+  --md-sys-color-on-surface-variant: #64748B; 
+  --md-sys-color-outline: #CBD5E1; 
+  --md-sys-color-outline-variant: #E2E8F0; 
+
+  --md-sys-color-success: #059669; 
+  --md-sys-color-success-container: #ECFDF5;
+  --md-sys-color-on-success-container: #064E3B;
+
+  --md-sys-color-warning: #D97706;
+  --md-sys-color-warning-container: #FFFBEB;
+  --md-sys-color-on-warning-container: #78350F;
+
+  --md-sys-color-error: #DC2626; 
+  --md-sys-color-error-container: #FEF2F2;
+  --md-sys-color-on-error-container: #7F1D1D;
+
+  --md-shape-corner-xs: 4px;
+  --md-shape-corner-sm: 8px;
+  --md-shape-corner-md: 12px;
+  --md-shape-corner-lg: 16px;
+  --md-shape-corner-xl: 24px;
+  --md-shape-corner-full: 9999px;
+
+  --md-elevation-1: 0 1px 3px 1px rgba(0, 0, 0, 0.08), 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+  --md-elevation-2: 0 2px 6px 2px rgba(0, 0, 0, 0.10), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  --md-elevation-3: 0 4px 8px 3px rgba(0, 0, 0, 0.12), 0 1px 3px 0 rgba(0, 0, 0, 0.08);
+  --md-elevation-fab: 0 6px 12px 2px rgba(63, 81, 181, 0.35);
+}
+
+.dark {
+  /* Material Design 3 Dark Theme Palette */
+  --md-sys-color-primary: #9FA8DA; 
+  --md-sys-color-on-primary: #1A237E; 
+  --md-sys-color-primary-container: #283593;
+  --md-sys-color-on-primary-container: #E8EAF6;
+
+  --md-sys-color-secondary: #94A3B8;
+  --md-sys-color-on-secondary: #0F172A;
+  --md-sys-color-secondary-container: #1E293B;
+  --md-sys-color-on-secondary-container: #F8FAFC;
+
+  --md-sys-color-tertiary: #38BDF8;
+  --md-sys-color-on-tertiary: #0C4A6E;
+  --md-sys-color-tertiary-container: #0369A1;
+  --md-sys-color-on-tertiary-container: #E0F2FE;
+
+  --md-sys-color-surface: #0B0F19; 
+  --md-sys-color-surface-dim: #070B12;
+  --md-sys-color-surface-container: #151D2F; 
+  --md-sys-color-surface-container-high: #1E293B; 
+  --md-sys-color-surface-container-highest: #334155; 
+
+  --md-sys-color-on-surface: #F8FAFC; 
+  --md-sys-color-on-surface-variant: #94A3B8; 
+  --md-sys-color-outline: #475569; 
+  --md-sys-color-outline-variant: #1E293B; 
+
+  --md-sys-color-success: #34D399; 
+  --md-sys-color-success-container: #064E3B;
+  --md-sys-color-on-success-container: #A7F3D0;
+
+  --md-sys-color-warning: #FBBF24;
+  --md-sys-color-warning-container: #78350F;
+  --md-sys-color-on-warning-container: #FDE68A;
+
+  --md-sys-color-error: #F87171; 
+  --md-sys-color-error-container: #7F1D1D;
+  --md-sys-color-on-error-container: #FECACA;
+
+  --md-elevation-1: 0 1px 3px 1px rgba(0, 0, 0, 0.4), 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --md-elevation-2: 0 2px 6px 2px rgba(0, 0, 0, 0.5), 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --md-elevation-3: 0 4px 8px 3px rgba(0, 0, 0, 0.6), 0 1px 3px 0 rgba(0, 0, 0, 0.4);
+  --md-elevation-fab: 0 6px 14px 2px rgba(0, 0, 0, 0.6);
+}
+
+* {
+  box-sizing: border-box;
+  font-family: var(--font-bengali);
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  background-color: var(--md-sys-color-surface);
+  color: var(--md-sys-color-on-surface);
+  margin: 0;
+  padding: 0;
+  user-select: none;
+  overscroll-behavior-y: contain;
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+.tabular {
+  font-family: var(--font-bengali);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Material Design 3 Top App Bar */
+.md3-top-app-bar {
+  background: var(--md-sys-color-surface);
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+  padding: calc(8px + env(safe-area-inset-top, 0px)) 16px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  transition: background-color 0.25s ease, border-color 0.25s ease;
+}
+
+.md3-icon-btn {
+  width: 42px;
+  height: 42px;
+  border-radius: var(--md-shape-corner-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--md-sys-color-on-surface);
+  cursor: pointer;
+  transition: background-color 0.18s cubic-bezier(0.16, 1, 0.3, 1), transform 0.12s;
+  flex-shrink: 0;
+}
+.md3-icon-btn:hover {
+  background-color: var(--md-sys-color-surface-container-high);
+}
+.md3-icon-btn:active {
+  transform: scale(0.92);
+  background-color: var(--md-sys-color-surface-container-highest);
+}
+
+.md3-tonal-icon-btn {
+  background: var(--md-sys-color-surface-container-high);
+  border: 1px solid var(--md-sys-color-outline-variant);
+}
+
+/* Material Design 3 Bottom Navigation Bar */
+.md3-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: calc(64px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  background: var(--md-sys-color-surface);
+  border-top: 1px solid var(--md-sys-color-outline-variant);
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  align-items: center;
+  z-index: 60;
+  box-shadow: var(--md-elevation-2);
+  transition: background-color 0.25s ease, border-color 0.25s ease;
+}
+
+.md3-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--md-sys-color-on-surface-variant);
+  gap: 3px;
+  padding: 6px 0;
+  transition: color 0.2s ease;
+  position: relative;
+}
+.md3-nav-item.active {
+  color: var(--md-sys-color-primary);
+  font-weight: 700;
+}
+
+.md3-nav-pill {
+  width: 56px;
+  height: 30px;
+  border-radius: var(--md-shape-corner-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  background: transparent;
+  position: relative;
+}
+.md3-nav-item.active .md3-nav-pill {
+  background-color: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+}
+
+.md3-nav-label {
+  font-size: 11px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.md3-nav-badge {
+  position: absolute;
+  top: 2px;
+  right: 10px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background-color: var(--md-sys-color-error);
+  color: #FFFFFF;
+  font-size: 10px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Material Design 3 Card */
+.md3-card {
+  background-color: var(--md-sys-color-surface-container);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-shape-corner-lg);
+  padding: 16px;
+  margin-bottom: 12px;
+  box-shadow: var(--md-elevation-1);
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.18s ease, background-color 0.25s ease;
+  position: relative;
+}
+.md3-card-interactive {
+  cursor: pointer;
+}
+.md3-card-interactive:active {
+  transform: scale(0.985);
+  background-color: var(--md-sys-color-surface-container-high);
+}
+
+/* Material Design 3 Filter Chips */
+.md3-chip-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 4px 2px;
+  scrollbar-width: none;
+}
+.md3-chip-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.md3-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: var(--md-shape-corner-sm);
+  font-size: 13px;
+  font-weight: 600;
+  background-color: var(--md-sys-color-surface-container);
+  border: 1px solid var(--md-sys-color-outline);
+  color: var(--md-sys-color-on-surface);
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.md3-chip:active {
+  transform: scale(0.96);
+}
+.md3-chip.active {
+  background-color: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+  border-color: var(--md-sys-color-primary);
+  font-weight: 700;
+}
+
+/* Outlined Material Text Fields */
+.md3-text-field {
+  position: relative;
+  margin-bottom: 14px;
+}
+.md3-text-field label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--md-sys-color-on-surface-variant);
+  margin-bottom: 5px;
+}
+.md3-input {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: var(--md-shape-corner-md);
+  border: 1.5px solid var(--md-sys-color-outline);
+  background-color: var(--md-sys-color-surface-container);
+  color: var(--md-sys-color-on-surface);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
+}
+.md3-input:focus {
+  border-color: var(--md-sys-color-primary);
+  box-shadow: 0 0 0 3px var(--md-sys-color-primary-container);
+}
+
+/* Material Floating Action Button (FAB) */
+.md3-fab {
+  position: fixed;
+  bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+  right: 20px;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--md-shape-corner-lg);
+  background-color: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--md-elevation-fab);
+  cursor: pointer;
+  z-index: 55;
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s;
+}
+.md3-fab:active {
+  transform: scale(0.92);
+}
+
+/* Material 3 Bottom Sheet & Dialog Overlays */
+.md3-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  z-index: 100;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  animation: md3FadeIn 0.2s ease-out;
+}
+.md3-overlay.center {
+  align-items: center;
+  padding: 16px;
+}
+
+@keyframes md3FadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.md3-sheet {
+  width: 100%;
+  max-width: 540px;
+  background-color: var(--md-sys-color-surface-container);
+  border-radius: var(--md-shape-corner-xl) var(--md-shape-corner-xl) 0 0;
+  border-top: 1px solid var(--md-sys-color-outline-variant);
+  padding: 12px 20px calc(32px + env(safe-area-inset-bottom, 0px));
+  max-height: 88vh;
+  overflow-y: auto;
+  box-shadow: var(--md-elevation-3);
+  animation: md3SlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+}
+.md3-sheet.dialog {
+  border-radius: var(--md-shape-corner-xl);
+  max-height: 85vh;
+  padding: 24px;
+}
+
+@keyframes md3SlideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.md3-drag-handle {
+  width: 36px;
+  height: 4px;
+  border-radius: 4px;
+  background-color: var(--md-sys-color-outline);
+  margin: 4px auto 14px;
+}
+
+/* Material 3 Buttons */
+.md3-btn-filled {
+  background-color: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
+  border: none;
+  border-radius: var(--md-shape-corner-md);
+  padding: 12px 20px;
+  font-size: 14.5px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  width: 100%;
+}
+.md3-btn-filled:active {
+  transform: scale(0.98);
+}
+.md3-btn-filled:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.md3-btn-tonal {
+  background-color: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+  border: none;
+  border-radius: var(--md-shape-corner-md);
+  padding: 11px 18px;
+  font-size: 14px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.18s;
+  width: 100%;
+}
+.md3-btn-tonal:active {
+  transform: scale(0.98);
+}
+
+.md3-btn-outlined {
+  background-color: transparent;
+  color: var(--md-sys-color-on-surface);
+  border: 1.5px solid var(--md-sys-color-outline);
+  border-radius: var(--md-shape-corner-md);
+  padding: 11px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.18s;
+  width: 100%;
+}
+.md3-btn-outlined:active {
+  background-color: var(--md-sys-color-surface-container-high);
+}
+
+.md3-btn-danger {
+  background-color: var(--md-sys-color-error-container);
+  color: var(--md-sys-color-error);
+  border: 1px solid var(--md-sys-color-error);
+}
+
+/* Material 3 Toast / Snackbar */
+.md3-snackbar {
+  position: fixed;
+  bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background-color: var(--md-sys-color-surface-container-highest);
+  color: var(--md-sys-color-on-surface);
+  border: 1px solid var(--md-sys-color-outline);
+  padding: 12px 20px;
+  border-radius: var(--md-shape-corner-full);
+  font-size: 13.5px;
+  font-weight: 600;
+  box-shadow: var(--md-elevation-3);
+  z-index: 120;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+  max-width: 90%;
+  text-align: center;
+}
+.md3-snackbar.show {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Desktop and Tablet Responsive Container */
+.app-viewport-container {
+  max-width: 680px;
+  margin: 0 auto;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+@media (min-width: 1024px) {
+  .app-viewport-container {
+    max-width: 1080px;
+  }
+}

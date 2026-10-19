@@ -1,5 +1,5 @@
 {
-  "name": "বিদ্যুৎ বিল ডিরেক্টরি",
+  "name": "বিদ্যুৎ বিল",
   "short_name": "বিদ্যুৎ বিল",
   "start_url": "./index.html",
   "display": "standalone",
