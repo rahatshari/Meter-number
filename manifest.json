@@ -1,21 +1,38 @@
 {
+  "id": "./",
   "name": "বিদ্যুৎ বিল",
   "short_name": "বিদ্যুৎ বিল",
+  "description": "Electricity Bill - বিদ্যুৎ বিল ও গ্রাহকের তথ্য সহজে ট্র্যাক এবং পরিচালনা করার অ্যাপ্লিকেশন",
   "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
-  "background_color": "#F3F4F6",
-  "theme_color": "#4F46E5",
   "orientation": "portrait",
+  "background_color": "#F8FAFC",
+  "theme_color": "#4F46E5",
   "icons": [
     {
-      "src": "icon.png",
+      "src": "pwa-192x192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "pwa-maskable-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     },
     {
       "src": "icon.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     }
   ]
 }

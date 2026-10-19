@@ -36,6 +36,7 @@ import { ActionModal } from './components/ActionModal';
 import { ConfirmModal } from './components/ConfirmModal';
 import { AuthModal } from './components/AuthModal';
 import { AccountModal } from './components/AccountModal';
+import { InstallPromptModal } from './components/InstallPromptModal';
 import { Toast } from './components/Toast';
 
 export const App: React.FC = () => {
@@ -91,6 +92,7 @@ export const App: React.FC = () => {
   const [authInitialTab, setAuthInitialTab] = useState<AuthTab>('google');
 
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
+  const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
 
   // Toast / Snackbar
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -558,6 +560,7 @@ export const App: React.FC = () => {
         onSearchClick={() => {
           setCurrentTab('customers');
         }}
+        onOpenInstall={() => setIsInstallModalOpen(true)}
       />
 
       {/* Main Content Body */}
@@ -623,6 +626,7 @@ export const App: React.FC = () => {
             onCopyText={handleCopyText}
             onShowToast={showToast}
             onShowConfirm={handleShowConfirm}
+            onOpenInstall={() => setIsInstallModalOpen(true)}
           />
         )}
       </main>
@@ -704,6 +708,12 @@ export const App: React.FC = () => {
         currentUser={currentUser}
         onSyncAllToCloud={handleSyncAllLocalToCloud}
         onLogout={handleLogout}
+      />
+
+      {/* PWA Install Modal */}
+      <InstallPromptModal
+        isOpen={isInstallModalOpen}
+        onClose={() => setIsInstallModalOpen(false)}
       />
 
       {/* Snackbar / Toast */}

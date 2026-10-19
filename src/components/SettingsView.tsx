@@ -15,6 +15,7 @@ interface SettingsViewProps {
   onCopyText: (text: string, label: string) => void;
   onShowToast: (msg: string) => void;
   onShowConfirm: (title: string, message: string, okText: string, onOk: () => void) => void;
+  onOpenInstall: () => void;
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
@@ -29,6 +30,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onCopyText,
   onShowToast,
   onShowConfirm,
+  onOpenInstall,
 }) => {
   const [mergeMode, setMergeMode] = useState<'merge' | 'replace'>('merge');
   const [selectedFile, setSelectedFile] = useState<{
@@ -617,6 +619,36 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         <h3 style={{ margin: '0 0 12px', fontSize: '16px', fontWeight: 700, color: 'var(--md-sys-color-on-surface)' }}>
           ⚙️ অ্যাপ ও ডিসপ্লে সেটিংস
         </h3>
+
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '12px',
+            backgroundColor: 'var(--md-sys-color-surface)',
+            borderRadius: 'var(--md-shape-corner-md)',
+            border: '1px solid var(--md-sys-color-outline-variant)',
+            marginBottom: '10px',
+          }}
+        >
+          <div>
+            <div style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--md-sys-color-on-surface)' }}>
+              📲 ফোনে অ্যাপ হিসেবে ইনস্টল করুন
+            </div>
+            <div style={{ fontSize: '11.5px', color: 'var(--md-sys-color-on-surface-variant)' }}>
+              Chrome বা Safari থেকে সরাসরি হোম স্ক্রিনে যুক্ত করুন
+            </div>
+          </div>
+          <button
+            type="button"
+            className="md3-btn-filled"
+            style={{ width: 'auto', padding: '6px 14px', fontSize: '12px' }}
+            onClick={onOpenInstall}
+          >
+            ইনস্টল
+          </button>
+        </div>
 
         <div
           style={{
