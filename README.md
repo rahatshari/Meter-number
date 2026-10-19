@@ -68,48 +68,16 @@ npm run dev
 
 অ্যাপটিতে `vite.config.ts`-এ `base: './'` কনফিগার করা আছে, যার ফলে এটি সাব-ডিরেক্টরিতেও (যেমন: `https://rahatshari.github.io/Meter-number/`) নির্বিঘ্নে কাজ করে।
 
-### পদ্ধতি ১: GitHub Actions অটোমেশন (সুপারিশকৃত)
-১. আপনার রিপোসিটরিতে `.github/workflows/deploy.yml` ফাইল তৈরি করুন:
-```yaml
-name: Deploy to GitHub Pages
+### পদ্ধতি ১: GitHub Actions অটোমেশন (সুপারিশকৃত ও সম্পূর্ণ প্রস্তুত)
+রিপোসিটরিতে ইতোমধ্যে `.github/workflows/deploy.yml` ফাইলটি যুক্ত ও কনফিগার করা আছে।
+১. আপনার GitHub রিপোজিটরির **Settings** ট্যাবে যান।
+২. বাম পাশের মেনু থেকে **Pages**-এ ক্লিক করুন।
+৩. **Build and deployment** সেকশনের **Source** ড্রপডাউনে **"GitHub Actions"** সিলেক্ট করুন।
+৪. ব্যস! এবার `main` বা `master` ব্রাঞ্চে পুশ করলে স্বয়ংক্রিয়ভাবে বিল্ড হয়ে অ্যাপ লাইভ হয়ে যাবে।
 
-on:
-  push:
-    branches: [ main ]
-
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: 'pages'
-  cancel-in-progress: true
-
-jobs:
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - run: npm install
-      - run: npm run build
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: './dist'
-      - id: deployment
-        uses: actions/deploy-pages@v4
-```
-২. GitHub Repo Settings -> **Pages** -> Source-এ সিলেক্ট করুন **GitHub Actions**।
-৩. কোড পুশ করলেই স্বয়ংক্রিয়ভাবে বিল্ড হয়ে লাইভ হয়ে যাবে।
-
-### পদ্ধতি ২: ম্যানুয়াল gh-pages ব্রাঞ্চ
+### পদ্ধতি ২: সরাসরি কমান্ড দিয়ে ডিপ্লয় (gh-pages)
+রিপোসিটরিতে `gh-pages` প্যাকেজ ও স্ক্রিপ্ট কনফিগার করা আছে:
 ```bash
-npm run build
-npx gh-pages -d dist
+npm run deploy
 ```
+এই একটি কমান্ড চালালেই প্রোডাকশন বান্ডেল বিল্ড হয়ে `gh-pages` ব্রাঞ্চে স্বয়ংক্রিয়ভাবে ডিপ্লয় হয়ে যাবে।
