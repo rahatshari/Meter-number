@@ -3,8 +3,6 @@ import {
   User,
   GoogleAuthProvider,
   signInWithPopup,
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
   sendPasswordResetEmail,
   signOut,
   onAuthStateChanged,
@@ -46,7 +44,12 @@ import {
   isNativeAndroidApk,
   triggerApkUpdateDownload,
 } from './utils/appUpdater';
-import { loginWithJustEmail, recordSavedGmailAccount } from './utils/authHelpers';
+import {
+  loginWithJustEmail,
+  recordSavedGmailAccount,
+  signInWithStandardEmailPassword,
+  registerWithStandardEmailPassword,
+} from './utils/authHelpers';
 
 import { TopAppBar } from './components/TopAppBar';
 import { BottomNavBar } from './components/BottomNavBar';
@@ -799,8 +802,8 @@ export const App: React.FC = () => {
 
   const handleEmailLogin = async (email: string, pass: string) => {
     try {
-      await signInWithEmailAndPassword(auth, email, pass);
-      showToast('ইমেইল লগইন সফল হয়েছে!');
+      const res = await signInWithStandardEmailPassword(auth, email, pass);
+      showToast(`✓ ${res.resolvedEmail} দিয়ে সফলভাবে লগইন হয়েছে!`);
     } catch (err: any) {
       console.error('Email login error:', err);
       let msg = 'ত্রুটি: ';
@@ -818,10 +821,10 @@ export const App: React.FC = () => {
     }
   };
 
-  const handleEmailRegister = async (email: string, pass: string) => {
+  const handleEmailRegister = async (email: string, pass: string, fullName?: string) => {
     try {
-      await createUserWithEmailAndPassword(auth, email, pass);
-      showToast('অ্যাকাউন্ট সফলভাবে তৈরি হয়েছে!');
+      const res = await registerWithStandardEmailPassword(auth, email, pass, fullName);
+      showToast(`✓ ${res.resolvedEmail} দিয়ে নতুন অ্যাকাউন্ট তৈরি ও লগইন সম্পন্ন হয়েছে!`);
     } catch (err: any) {
       console.error('Email register error:', err);
       let msg = 'ত্রুটি: ';

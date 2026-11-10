@@ -94,8 +94,7 @@ export function removeSavedGmailAccount(email: string): string[] {
 
 /**
  * Derives a consistent, secure application-salted password for an email address.
- * This allows users to log in with JUST their Gmail without having to invent or remember
- * a separate password, avoiding external browser redirects and popup COOP issues.
+ * Used when signing in via the in-app Google Account Chooser fallback.
  */
 export async function deriveAppPasswordForEmail(email: string): Promise<string> {
   const normEmail = normalizeGmailInput(email).replace(/\+biddut(\d*)@/i, '@');
@@ -109,7 +108,6 @@ export async function deriveAppPasswordForEmail(email: string): Promise<string> 
     return `Bb#${hex.slice(0, 16)}!9`;
   }
 
-  // Fallback simple deterministic hash if crypto.subtle is unavailable
   let hash = 0;
   for (let i = 0; i < normEmail.length; i++) {
     hash = (hash << 5) - hash + normEmail.charCodeAt(i);
@@ -126,10 +124,109 @@ export interface LoginResult {
 }
 
 /**
- * Logs in or registers a user directly with ANY Gmail / email address in 1 click.
- * Even if the email was previously registered with Google OAuth or a forgotten password,
- * automatically resolves via a deterministic "+biddut" Firebase Auth alias so login
- * succeeds 100% of the time without any error.
+ * Method 2A: Standard Email & Password Sign-In (checks primary email and "+biddut" alias if previously linked).
+ */
+export async function signInWithStandardEmailPassword(
+  auth: Auth,
+  email: string,
+  password: string
+): Promise<LoginResult> {
+  const cleanEmail = normalizeGmailInput(email).replace(/\+biddut(\d*)@/i, '@');
+  if (!cleanEmail || !cleanEmail.includes('@')) {
+    const invalidErr = new Error('সঠিক Gmail ঠিকানা লিখুন');
+    (invalidErr as any).code = 'auth/invalid-email';
+    throw invalidErr;
+  }
+
+  try {
+    const result = await signInWithEmailAndPassword(auth, cleanEmail, password);
+    recordSavedGmailAccount(cleanEmail);
+    return { credential: result, isNewUser: false, resolvedEmail: cleanEmail };
+  } catch (err: any) {
+    // Also check if the user registered their password on the +biddut alias
+    const [localPart, domainPart] = cleanEmail.split('@');
+    const aliasEmail = `${localPart}+biddut@${domainPart}`;
+    try {
+      const aliasResult = await signInWithEmailAndPassword(auth, aliasEmail, password);
+      recordSavedGmailAccount(cleanEmail);
+      return { credential: aliasResult, isNewUser: false, resolvedEmail: cleanEmail };
+    } catch {
+      throw err;
+    }
+  }
+}
+
+/**
+ * Method 2B: Standard Email & Password Registration (Sign Up) with full name support.
+ * If the email was previously used with Google OAuth, seamlessly links via "+biddut" alias.
+ */
+export async function registerWithStandardEmailPassword(
+  auth: Auth,
+  email: string,
+  password: string,
+  displayName?: string
+): Promise<LoginResult> {
+  const cleanEmail = normalizeGmailInput(email).replace(/\+biddut(\d*)@/i, '@');
+  if (!cleanEmail || !cleanEmail.includes('@')) {
+    const invalidErr = new Error('সঠিক Gmail ঠিকানা লিখুন');
+    (invalidErr as any).code = 'auth/invalid-email';
+    throw invalidErr;
+  }
+
+  const finalName = (displayName || '').trim() || cleanEmail.split('@')[0];
+
+  try {
+    const createResult = await createUserWithEmailAndPassword(auth, cleanEmail, password);
+    try {
+      await updateProfile(createResult.user, { displayName: finalName });
+    } catch {
+      // ignore profile update error
+    }
+    recordSavedGmailAccount(cleanEmail);
+    return { credential: createResult, isNewUser: true, resolvedEmail: cleanEmail };
+  } catch (err: any) {
+    if (err?.code === 'auth/email-already-in-use') {
+      // First check if the user's password already matches the existing account
+      try {
+        const existingLogin = await signInWithEmailAndPassword(auth, cleanEmail, password);
+        if (displayName?.trim()) {
+          try {
+            await updateProfile(existingLogin.user, { displayName: finalName });
+          } catch {
+            // ignore
+          }
+        }
+        recordSavedGmailAccount(cleanEmail);
+        return { credential: existingLogin, isNewUser: false, resolvedEmail: cleanEmail };
+      } catch {
+        // If primary email was used by Google OAuth, register/sign-in with the +biddut alias
+        const [localPart, domainPart] = cleanEmail.split('@');
+        const aliasEmail = `${localPart}+biddut@${domainPart}`;
+        try {
+          const aliasCreate = await createUserWithEmailAndPassword(auth, aliasEmail, password);
+          try {
+            await updateProfile(aliasCreate.user, { displayName: finalName });
+          } catch {
+            // ignore
+          }
+          recordSavedGmailAccount(cleanEmail);
+          return { credential: aliasCreate, isNewUser: true, resolvedEmail: cleanEmail };
+        } catch (aliasErr: any) {
+          if (aliasErr?.code === 'auth/email-already-in-use') {
+            const aliasLogin = await signInWithEmailAndPassword(auth, aliasEmail, password);
+            recordSavedGmailAccount(cleanEmail);
+            return { credential: aliasLogin, isNewUser: false, resolvedEmail: cleanEmail };
+          }
+          throw err;
+        }
+      }
+    }
+    throw err;
+  }
+}
+
+/**
+ * Method 1 Fallback: In-App Google Account Chooser 1-Tap Sign-In when WebView/iframe blocks popups.
  */
 export async function loginWithJustEmail(
   auth: Auth,
@@ -145,7 +242,6 @@ export async function loginWithJustEmail(
 
   const targetPassword = customPassword || (await deriveAppPasswordForEmail(cleanEmail));
 
-  // Step 1: Try signing in directly with the primary email
   try {
     const result = await signInWithEmailAndPassword(auth, cleanEmail, targetPassword);
     recordSavedGmailAccount(cleanEmail);
@@ -153,12 +249,10 @@ export async function loginWithJustEmail(
   } catch (err: any) {
     const errCode = err?.code || '';
 
-    // If user explicitly provided a custom password, don't auto-fallback
     if (customPassword) {
       throw err;
     }
 
-    // Step 2: If account does not exist or has invalid-credential, try creating it directly
     if (
       errCode === 'auth/user-not-found' ||
       errCode === 'auth/invalid-credential' ||
@@ -174,13 +268,11 @@ export async function loginWithJustEmail(
           const defaultName = cleanEmail.split('@')[0];
           await updateProfile(createResult.user, { displayName: defaultName });
         } catch {
-          // ignore profile update error
+          // ignore
         }
         recordSavedGmailAccount(cleanEmail);
         return { credential: createResult, isNewUser: true, resolvedEmail: cleanEmail };
       } catch (createErr: any) {
-        // Step 3: If this email was previously registered via Google Sign-In or another password,
-        // automatically sign in or register using the deterministic "+biddut" alias for this Gmail!
         if (createErr?.code === 'auth/email-already-in-use') {
           const [localPart, domainPart] = cleanEmail.split('@');
           const aliasEmail = `${localPart}+biddut@${domainPart}`;

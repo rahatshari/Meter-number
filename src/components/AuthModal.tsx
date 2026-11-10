@@ -1,9 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { AuthTab, EmailAuthMode } from '../types';
 import {
-  getSavedGmailAccounts,
   recordSavedGmailAccount,
-  removeSavedGmailAccount,
   normalizeGmailInput,
 } from '../utils/authHelpers';
 
@@ -11,125 +9,50 @@ interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
   onGoogleLogin: () => Promise<void>;
-  onJustEmailLogin: (email: string) => Promise<void>;
+  onJustEmailLogin?: (email: string) => Promise<void>;
   onEmailLogin: (email: string, pass: string) => Promise<void>;
-  onEmailRegister: (email: string, pass: string) => Promise<void>;
+  onEmailRegister: (email: string, pass: string, fullName?: string) => Promise<void>;
   onForgotPassword: (email: string) => Promise<void>;
   onShowToast: (msg: string) => void;
   initialTab?: AuthTab;
-}
-
-const AVATAR_COLORS = [
-  '#1A73E8',
-  '#0F9D58',
-  '#D93025',
-  '#F29900',
-  '#9334E6',
-  '#00897B',
-];
-
-function getAvatarColor(email: string): string {
-  let sum = 0;
-  for (let i = 0; i < email.length; i++) {
-    sum += email.charCodeAt(i);
-  }
-  return AVATAR_COLORS[sum % AVATAR_COLORS.length];
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({
   isOpen,
   onClose,
   onGoogleLogin,
-  onJustEmailLogin,
   onEmailLogin,
   onEmailRegister,
   onForgotPassword,
   onShowToast,
 }) => {
+  const [emailMode, setEmailMode] = useState<EmailAuthMode>('login');
+  const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [showPasswordSection, setShowPasswordSection] = useState(false);
-  const [emailMode, setEmailMode] = useState<EmailAuthMode>('login');
   const [isLoading, setIsLoading] = useState(false);
-  const [loadingAccount, setLoadingAccount] = useState<string | null>(null);
   const [resetSent, setResetSent] = useState(false);
   const [helperNotice, setHelperNotice] = useState<{
     type: 'info' | 'warning' | 'success';
     text: string;
   } | null>(null);
-  const [savedAccounts, setSavedAccounts] = useState<string[]>([]);
+
   const emailInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isOpen) {
-      const accounts = getSavedGmailAccounts();
-      setSavedAccounts(accounts);
       setHelperNotice(null);
-      setLoadingAccount(null);
+      setResetSent(false);
+      setFullName('');
       setEmail('');
+      setPassword('');
     }
   }, [isOpen]);
 
   if (!isOpen) return null;
 
-  // 1-Tap Login directly from previously used Gmail accounts on this device
-  const handleInstantAccountTap = async (selectedGmail: string) => {
-    const cleanEmail = normalizeGmailInput(selectedGmail);
-    if (!cleanEmail) return;
-
-    setIsLoading(true);
-    setLoadingAccount(cleanEmail);
-    setHelperNotice(null);
-    try {
-      await onJustEmailLogin(cleanEmail);
-      recordSavedGmailAccount(cleanEmail);
-      setSavedAccounts(getSavedGmailAccounts());
-      onClose();
-    } catch (err: any) {
-      console.error('1-Tap Gmail Login error:', err);
-      setHelperNotice({
-        type: 'warning',
-        text: 'লগইন করতে সমস্যা হয়েছে। অনুগ্রহ করে ইন্টারনেট সংযোগ চেক করে আবার চেষ্টা করুন।',
-      });
-    } finally {
-      setIsLoading(false);
-      setLoadingAccount(null);
-    }
-  };
-
-  // Direct Gmail Login for any typed Gmail address
-  const handleDirectGmailLogin = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    const cleanEmail = normalizeGmailInput(email);
-    if (!cleanEmail) {
-      onShowToast('দয়া করে আপনার Gmail ঠিকানা লিখুন');
-      emailInputRef.current?.focus();
-      return;
-    }
-
-    setIsLoading(true);
-    setLoadingAccount(cleanEmail);
-    setHelperNotice(null);
-    try {
-      await onJustEmailLogin(cleanEmail);
-      recordSavedGmailAccount(cleanEmail);
-      setSavedAccounts(getSavedGmailAccounts());
-      setEmail('');
-      onClose();
-    } catch (err: any) {
-      console.error('Direct Gmail Login failed:', err);
-      setHelperNotice({
-        type: 'warning',
-        text: 'সঠিক Gmail ঠিকানা লিখুন (যেমন: name@gmail.com) এবং ইন্টারনেট সংযোগ চালু রাখুন।',
-      });
-    } finally {
-      setIsLoading(false);
-      setLoadingAccount(null);
-    }
-  };
-
-  // Browser / Native Google Popup with fallback only if user typed an email
+  // METHOD 1: "Continue with Google"
   const handleGoogleClick = async () => {
     setIsLoading(true);
     setHelperNotice(null);
@@ -143,23 +66,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         return;
       }
 
-      const typedEmail = normalizeGmailInput(email);
-      if (typedEmail) {
-        try {
-          await onJustEmailLogin(typedEmail);
-          recordSavedGmailAccount(typedEmail);
-          setSavedAccounts(getSavedGmailAccounts());
-          setEmail('');
-          onClose();
-          return;
-        } catch (fallbackErr) {
-          console.error('Fallback login error:', fallbackErr);
-        }
-      }
-
       setHelperNotice({
         type: 'info',
-        text: 'উপরের বক্সে আপনার ইচ্ছামতো যেকোনো Gmail লিখে "Gmail দিয়ে লগইন করুন" বাটনে ট্যাপ করুন।',
+        text: 'পপআপ উইন্ডো চালু করা যায়নি। অনুগ্রহ করে নিচের ইমেইল ও পাসওয়ার্ড অপশনটি ব্যবহার করে লগইন বা নতুন অ্যাকাউন্ট তৈরি করুন।',
       });
       emailInputRef.current?.focus();
     } finally {
@@ -167,17 +76,24 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
   };
 
-  const handleRemoveSaved = (e: React.MouseEvent, acc: string) => {
-    e.stopPropagation();
-    const updated = removeSavedGmailAccount(acc);
-    setSavedAccounts(updated);
-  };
-
-  const handlePasswordSubmit = async (e: React.FormEvent) => {
+  // METHOD 2: Standard Email & Password (Sign In / Sign Up)
+  const handleEmailPasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanEmail = normalizeGmailInput(email);
-    if (!cleanEmail || !password) {
-      onShowToast('দয়া করে আপনার Gmail এবং পাসওয়ার্ড দিন');
+
+    if (!cleanEmail) {
+      onShowToast('দয়া করে আপনার Gmail বা ইমেইল ঠিকানা লিখুন');
+      emailInputRef.current?.focus();
+      return;
+    }
+
+    if (emailMode === 'register' && !fullName.trim()) {
+      onShowToast('দয়া করে আপনার নাম লিখুন');
+      return;
+    }
+
+    if (!password || password.length < 6) {
+      onShowToast('পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে');
       return;
     }
 
@@ -187,40 +103,59 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       if (emailMode === 'login') {
         await onEmailLogin(cleanEmail, password);
       } else {
-        await onEmailRegister(cleanEmail, password);
+        await onEmailRegister(cleanEmail, password, fullName.trim());
       }
       recordSavedGmailAccount(cleanEmail);
       onClose();
     } catch (err: any) {
-      setHelperNotice({
-        type: 'warning',
-        text: 'পাসওয়ার্ড মেলেনি। পাসওয়ার্ড ছাড়াই সরাসরি লগইন করতে উপরের Gmail অপশনটি ব্যবহার করুন।',
-      });
+      const code = err?.code || '';
+      if (
+        code === 'auth/wrong-password' ||
+        code === 'auth/invalid-credential' ||
+        code === 'auth/user-not-found'
+      ) {
+        setHelperNotice({
+          type: 'warning',
+          text: 'ইমেইল বা পাসওয়ার্ড মেলেনি। আপনি নতুন হলে "নতুন অ্যাকাউন্ট (Sign Up)" ট্যাবে গিয়ে অ্যাকাউন্ট খুলুন।',
+        });
+      } else if (code === 'auth/email-already-in-use') {
+        setHelperNotice({
+          type: 'info',
+          text: 'এই Gmail দিয়ে আগেই অ্যাকাউন্ট খোলা আছে। অনুগ্রহ করে "লগইন করুন" ট্যাব থেকে লগইন করুন অথবা পাসওয়ার্ড রিসেট করুন।',
+        });
+        setEmailMode('login');
+      } else {
+        setHelperNotice({
+          type: 'warning',
+          text: 'লগইন সম্পন্ন হয়নি। অনুগ্রহ করে তথ্য যাচাই করে আবার চেষ্টা করুন।',
+        });
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
+  // Forgot Password handler
   const handleForgot = async () => {
     const cleanEmail = normalizeGmailInput(email);
     if (!cleanEmail) {
-      onShowToast('প্রথমে উপরের বক্সে আপনার জিমেইল ঠিকানাটি লিখুন');
+      onShowToast('পাসওয়ার্ড রিসেট করতে প্রথমে Gmail ঠিকানাটি বক্সে লিখুন');
       emailInputRef.current?.focus();
       return;
     }
     setIsLoading(true);
+    setHelperNotice(null);
     try {
       await onForgotPassword(cleanEmail);
       setResetSent(true);
       setHelperNotice({
         type: 'success',
-        text: `✓ আপনার ${cleanEmail} ঠিকানায় পাসওয়ার্ড রিসেট লিংক পাঠানো হয়েছে!`,
+        text: `✓ আপনার ${cleanEmail} ঠিকানায় পাসওয়ার্ড রিসেট লিংক পাঠানো হয়েছে! আপনার Gmail ইনবক্স বা Spam ফোল্ডার চেক করুন।`,
       });
-      onShowToast('✓ পাসওয়ার্ড রিসেট লিংক পাঠানো হয়েছে');
     } catch (err: any) {
       setHelperNotice({
         type: 'warning',
-        text: 'রিসেট লিংক পাঠানো যায়নি: ' + (err?.message || 'পুনরায় চেষ্টা করুন'),
+        text: 'রিসেট লিংক পাঠানো যায়নি। এই Gmail দিয়ে আগে অ্যাকাউন্ট খোলা হয়েছে কি না তা নিশ্চিত করুন।',
       });
     } finally {
       setIsLoading(false);
@@ -231,58 +166,60 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     <div className="md3-overlay" onClick={onClose}>
       <div
         className="md3-sheet"
-        style={{ maxWidth: '440px', maxHeight: '92vh', overflowY: 'auto' }}
+        style={{ maxWidth: '430px', maxHeight: '92vh', overflowY: 'auto' }}
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="auth-modal-title"
       >
         <div className="md3-drag-handle" />
 
-        {/* Google Sign-In Header */}
+        {/* App Brand & Standard Login Header */}
         <div style={{ textAlign: 'center', marginBottom: '16px' }}>
           <div
             style={{
+              width: '48px',
+              height: '48px',
+              borderRadius: '14px',
+              backgroundColor: '#FFFFFF',
+              border: '1.5px solid var(--md-sys-color-outline-variant)',
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '8px',
               marginBottom: '8px',
-              padding: '6px 14px',
-              borderRadius: '999px',
-              backgroundColor: 'var(--md-sys-color-surface-container)',
-              border: '1px solid var(--md-sys-color-outline-variant)',
+              boxShadow: 'var(--md-elevation-1)',
             }}
           >
-            <svg width="18" height="18" viewBox="0 0 24 24">
-              <path
-                fill="#4285F4"
-                d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-              />
-              <path
-                fill="#34A853"
-                d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-              />
-              <path
-                fill="#FBBC05"
-                d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-              />
-              <path
-                fill="#EA4335"
-                d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-              />
-            </svg>
-            <span style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--md-sys-color-on-surface)' }}>
-              Google ফায়ারবেস ক্লাউড লগইন
-            </span>
+            <img
+              src="./icon.png"
+              alt="বিদ্যুৎ বিল"
+              style={{ width: '38px', height: '38px', objectFit: 'contain' }}
+            />
           </div>
 
-          <h3 style={{ margin: 0, fontSize: '19px', fontWeight: 700, color: 'var(--md-sys-color-on-surface)' }}>
-            Gmail দিয়ে লগইন করুন
+          <h3
+            id="auth-modal-title"
+            style={{
+              margin: 0,
+              fontSize: '19px',
+              fontWeight: 700,
+              color: 'var(--md-sys-color-on-surface)',
+            }}
+          >
+            অ্যাকাউন্টে লগইন করুন
           </h3>
-          <p style={{ margin: '4px 0 0', fontSize: '12px', color: 'var(--md-sys-color-on-surface-variant)' }}>
-            আপনার ইচ্ছামতো যেকোনো Gmail দিয়ে সরাসরি লগইন ও ক্লাউড সিঙ্ক করুন
+          <p
+            style={{
+              margin: '4px 0 0',
+              fontSize: '12px',
+              color: 'var(--md-sys-color-on-surface-variant)',
+            }}
+          >
+            Google অ্যাকাউন্ট অথবা ইমেইল ও পাসওয়ার্ড দিয়ে সাইন-ইন করুন
           </p>
         </div>
 
-        {/* Notice alert banner if any */}
+        {/* Alert / Feedback Banner */}
         {helperNotice && (
           <div
             style={{
@@ -316,211 +253,33 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </div>
         )}
 
-        {/* 1. PRIMARY: ENTER ANY GMAIL ADDRESS (NO DEFAULT GMAIL PRE-FILLED) */}
-        <form
-          onSubmit={handleDirectGmailLogin}
-          style={{
-            backgroundColor: 'var(--md-sys-color-surface)',
-            border: '2px solid var(--md-sys-color-primary)',
-            borderRadius: '16px',
-            padding: '14px',
-            marginBottom: '14px',
-            boxShadow: 'var(--md-elevation-1)',
-          }}
-        >
-          <div className="md3-text-field" style={{ marginBottom: '12px' }}>
-            <label>আপনার Gmail ঠিকানা লিখুন</label>
-            <input
-              ref={emailInputRef}
-              type="text"
-              inputMode="email"
-              autoCapitalize="none"
-              autoCorrect="off"
-              className="md3-input"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="যেমন: example@gmail.com"
-            />
-          </div>
-
-          <button
-            type="submit"
-            className="md3-btn-filled"
-            disabled={isLoading || !email.trim()}
-            style={{
-              width: '100%',
-              height: '46px',
-              fontSize: '14px',
-              fontWeight: 700,
-              justifyContent: 'center',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              borderRadius: '12px',
-            }}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
-              <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
-              <polyline points="10 17 15 12 10 7" />
-              <line x1="15" y1="12" x2="3" y2="12" />
-            </svg>
-            {isLoading && loadingAccount === normalizeGmailInput(email)
-              ? 'লগইন হচ্ছে...'
-              : 'Gmail দিয়ে সরাসরি লগইন করুন'}
-          </button>
-        </form>
-
-        {/* 2. PREVIOUSLY USED GMAIL ACCOUNTS ON THIS DEVICE (ONLY SHOWN IF USER HAS LOGGED IN BEFORE) */}
-        {savedAccounts.length > 0 && (
-          <div style={{ marginBottom: '14px' }}>
-            <div
-              style={{
-                fontSize: '11.5px',
-                fontWeight: 700,
-                color: 'var(--md-sys-color-on-surface-variant)',
-                marginBottom: '6px',
-                paddingLeft: '2px',
-              }}
-            >
-              পূর্বে ব্যবহৃত Gmail অ্যাকাউন্ট:
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {savedAccounts.map((acc) => {
-                const namePart = acc.split('@')[0];
-                const initial = (namePart.charAt(0) || 'G').toUpperCase();
-                const isThisLoading = loadingAccount === acc;
-
-                return (
-                  <div
-                    key={acc}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                    }}
-                  >
-                    <button
-                      type="button"
-                      disabled={isLoading}
-                      onClick={() => handleInstantAccountTap(acc)}
-                      style={{
-                        flex: 1,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '12px',
-                        padding: '10px 12px',
-                        borderRadius: '14px',
-                        border: '1.5px solid var(--md-sys-color-outline-variant)',
-                        backgroundColor: 'var(--md-sys-color-surface)',
-                        cursor: isLoading ? 'wait' : 'pointer',
-                        textAlign: 'left',
-                        boxShadow: 'var(--md-elevation-1)',
-                        transition: 'all 0.15s ease',
-                      }}
-                    >
-                      <div
-                        style={{
-                          width: '36px',
-                          height: '36px',
-                          borderRadius: '50%',
-                          backgroundColor: getAvatarColor(acc),
-                          color: '#FFFFFF',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: '15px',
-                          fontWeight: 700,
-                          flexShrink: 0,
-                        }}
-                      >
-                        {initial}
-                      </div>
-
-                      <div style={{ minWidth: 0, flex: 1 }}>
-                        <div
-                          style={{
-                            fontSize: '13px',
-                            fontWeight: 700,
-                            color: 'var(--md-sys-color-on-surface)',
-                          }}
-                          className="truncate"
-                        >
-                          {namePart}
-                        </div>
-                        <div
-                          style={{
-                            fontSize: '11.5px',
-                            color: 'var(--md-sys-color-on-surface-variant)',
-                          }}
-                          className="truncate"
-                        >
-                          {acc}
-                        </div>
-                      </div>
-
-                      <span
-                        style={{
-                          fontSize: '11px',
-                          fontWeight: 700,
-                          padding: '4px 10px',
-                          borderRadius: '999px',
-                          backgroundColor: 'var(--md-sys-color-primary-container)',
-                          color: 'var(--md-sys-color-primary)',
-                          flexShrink: 0,
-                        }}
-                      >
-                        {isThisLoading ? 'লগইন হচ্ছে...' : 'লগইন →'}
-                      </span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={(e) => handleRemoveSaved(e, acc)}
-                      title="তালিকা থেকে সরান"
-                      aria-label={`${acc} সরান`}
-                      style={{
-                        width: '34px',
-                        height: '34px',
-                        borderRadius: '10px',
-                        border: '1px solid var(--md-sys-color-outline-variant)',
-                        backgroundColor: 'var(--md-sys-color-surface-container)',
-                        color: 'var(--md-sys-color-on-surface-variant)',
-                        cursor: 'pointer',
-                        fontSize: '13px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexShrink: 0,
-                      }}
-                    >
-                      ✕
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* 3. SECONDARY: GOOGLE BROWSER POPUP & OPTIONAL PASSWORD */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '10px' }}>
+        {/* ============================================================
+            METHOD 1: CONTINUE WITH GOOGLE (1-CLICK GOOGLE SIGN-IN)
+            ============================================================ */}
+        <div style={{ marginBottom: '14px' }}>
           <button
             type="button"
-            className="md3-btn-outlined"
             disabled={isLoading}
             onClick={handleGoogleClick}
             style={{
               width: '100%',
-              height: '42px',
-              fontSize: '13px',
-              fontWeight: 600,
+              height: '48px',
+              borderRadius: '12px',
+              border: '1.5px solid var(--md-sys-color-outline)',
+              backgroundColor: 'var(--md-sys-color-surface)',
+              color: 'var(--md-sys-color-on-surface)',
+              fontSize: '14px',
+              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
               justifyContent: 'center',
-              backgroundColor: 'var(--md-sys-color-surface-container)',
-              borderRadius: '10px',
+              gap: '10px',
+              cursor: isLoading ? 'wait' : 'pointer',
+              boxShadow: 'var(--md-elevation-1)',
+              transition: 'all 0.15s ease',
             }}
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" style={{ marginRight: '6px' }}>
+            <svg width="20" height="20" viewBox="0 0 24 24">
               <path
                 fill="#4285F4"
                 d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -538,131 +297,205 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
               />
             </svg>
-            Google পপআপ উইন্ডো দিয়ে লগইন
-          </button>
-
-          <button
-            type="button"
-            className="md3-btn-tonal"
-            onClick={() => setShowPasswordSection(!showPasswordSection)}
-            style={{
-              width: '100%',
-              height: '36px',
-              fontSize: '12px',
-              justifyContent: 'center',
-              borderRadius: '10px',
-            }}
-          >
-            {showPasswordSection ? '▲ পাসওয়ার্ড অপশন লুকান' : '▼ পাসওয়ার্ড বা রিসেট লিংক (ঐচ্ছিক)'}
+            <span>Google দিয়ে চালিয়ে যান (Continue with Google)</span>
           </button>
         </div>
 
-        {/* 4. OPTIONAL PASSWORD FORM */}
-        {showPasswordSection && (
+        {/* ============================================================
+            DIVIDER: অথবা ইমেইল ও পাসওয়ার্ড দিয়ে
+            ============================================================ */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            margin: '14px 0',
+          }}
+        >
           <div
             style={{
-              padding: '12px',
-              borderRadius: '12px',
-              backgroundColor: 'var(--md-sys-color-surface-container)',
-              border: '1px solid var(--md-sys-color-outline-variant)',
-              marginBottom: '10px',
+              flex: 1,
+              height: '1px',
+              backgroundColor: 'var(--md-sys-color-outline-variant)',
+            }}
+          />
+          <span
+            style={{
+              fontSize: '11.5px',
+              fontWeight: 600,
+              color: 'var(--md-sys-color-on-surface-variant)',
+              whiteSpace: 'nowrap',
             }}
           >
-            <div
+            অথবা ইমেইল ও পাসওয়ার্ড দিয়ে
+          </span>
+          <div
+            style={{
+              flex: 1,
+              height: '1px',
+              backgroundColor: 'var(--md-sys-color-outline-variant)',
+            }}
+          />
+        </div>
+
+        {/* ============================================================
+            METHOD 2: STANDARD EMAIL & PASSWORD (SIGN IN / SIGN UP)
+            ============================================================ */}
+        <div
+          style={{
+            backgroundColor: 'var(--md-sys-color-surface)',
+            border: '1px solid var(--md-sys-color-outline-variant)',
+            borderRadius: '16px',
+            padding: '14px',
+            marginBottom: '12px',
+          }}
+        >
+          {/* Segmented Tabs: লগইন করুন (Sign In) | নতুন অ্যাকাউন্ট (Sign Up) */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '4px',
+              backgroundColor: 'var(--md-sys-color-surface-container-high)',
+              padding: '3px',
+              borderRadius: '10px',
+              marginBottom: '14px',
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => {
+                setEmailMode('login');
+                setHelperNotice(null);
+              }}
               style={{
-                display: 'flex',
-                gap: '4px',
-                marginBottom: '10px',
-                backgroundColor: 'var(--md-sys-color-surface-container-high)',
-                padding: '2px',
+                padding: '8px 6px',
+                border: 'none',
                 borderRadius: '8px',
+                fontSize: '12.5px',
+                fontWeight: 700,
+                backgroundColor:
+                  emailMode === 'login' ? 'var(--md-sys-color-surface)' : 'transparent',
+                color:
+                  emailMode === 'login'
+                    ? 'var(--md-sys-color-primary)'
+                    : 'var(--md-sys-color-on-surface-variant)',
+                boxShadow: emailMode === 'login' ? 'var(--md-elevation-1)' : 'none',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
               }}
             >
-              <button
-                type="button"
-                style={{
-                  flex: 1,
-                  border: 'none',
-                  padding: '6px',
-                  borderRadius: '6px',
-                  fontSize: '11.5px',
-                  fontWeight: 700,
-                  backgroundColor:
-                    emailMode === 'login' ? 'var(--md-sys-color-surface-container)' : 'transparent',
-                  color:
-                    emailMode === 'login'
-                      ? 'var(--md-sys-color-on-surface)'
-                      : 'var(--md-sys-color-on-surface-variant)',
-                  cursor: 'pointer',
-                }}
-                onClick={() => setEmailMode('login')}
-              >
-                পাসওয়ার্ড লগইন
-              </button>
-              <button
-                type="button"
-                style={{
-                  flex: 1,
-                  border: 'none',
-                  padding: '6px',
-                  borderRadius: '6px',
-                  fontSize: '11.5px',
-                  fontWeight: 700,
-                  backgroundColor:
-                    emailMode === 'register'
-                      ? 'var(--md-sys-color-surface-container)'
-                      : 'transparent',
-                  color:
-                    emailMode === 'register'
-                      ? 'var(--md-sys-color-on-surface)'
-                      : 'var(--md-sys-color-on-surface-variant)',
-                  cursor: 'pointer',
-                }}
-                onClick={() => setEmailMode('register')}
-              >
-                নতুন পাসওয়ার্ড সেট
-              </button>
+              লগইন করুন (Sign In)
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setEmailMode('register');
+                setHelperNotice(null);
+              }}
+              style={{
+                padding: '8px 6px',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '12.5px',
+                fontWeight: 700,
+                backgroundColor:
+                  emailMode === 'register' ? 'var(--md-sys-color-surface)' : 'transparent',
+                color:
+                  emailMode === 'register'
+                    ? 'var(--md-sys-color-primary)'
+                    : 'var(--md-sys-color-on-surface-variant)',
+                boxShadow: emailMode === 'register' ? 'var(--md-elevation-1)' : 'none',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              নতুন অ্যাকাউন্ট (Sign Up)
+            </button>
+          </div>
+
+          <form onSubmit={handleEmailPasswordSubmit}>
+            {/* Full Name input (shown only on Sign Up) */}
+            {emailMode === 'register' && (
+              <div className="md3-text-field" style={{ marginBottom: '10px' }}>
+                <label>আপনার নাম *</label>
+                <input
+                  type="text"
+                  className="md3-input"
+                  placeholder="আপনার পূর্ণ নাম লিখুন"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  required
+                />
+              </div>
+            )}
+
+            {/* Gmail / Email input */}
+            <div className="md3-text-field" style={{ marginBottom: '10px' }}>
+              <label>Gmail / ইমেইল ঠিকানা *</label>
+              <input
+                ref={emailInputRef}
+                type="text"
+                inputMode="email"
+                autoCapitalize="none"
+                autoCorrect="off"
+                className="md3-input"
+                placeholder="যেমন: example@gmail.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
             </div>
 
-            <form onSubmit={handlePasswordSubmit}>
-              <div className="md3-text-field" style={{ marginBottom: '8px' }}>
-                <label>পাসওয়ার্ড *</label>
-                <div style={{ position: 'relative' }}>
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    className="md3-input"
-                    placeholder="পাসওয়ার্ড দিন"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    minLength={6}
-                    style={{ paddingRight: '40px' }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    style={{
-                      position: 'absolute',
-                      right: '10px',
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      background: 'none',
-                      border: 'none',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                    }}
-                  >
-                    {showPassword ? '👁️' : '🔒'}
-                  </button>
-                </div>
+            {/* Password input */}
+            <div className="md3-text-field" style={{ marginBottom: '8px' }}>
+              <label>
+                {emailMode === 'register' ? 'নতুন পাসওয়ার্ড (কমপক্ষে ৬ অক্ষর) *' : 'পাসওয়ার্ড *'}
+              </label>
+              <div style={{ position: 'relative' }}>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  className="md3-input"
+                  placeholder={
+                    emailMode === 'register'
+                      ? 'কমপক্ষে ৬ অক্ষরের পাসওয়ার্ড দিন'
+                      : 'আপনার পাসওয়ার্ড লিখুন'
+                  }
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  minLength={6}
+                  style={{ paddingRight: '42px' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  title={showPassword ? 'পাসওয়ার্ড লুকান' : 'পাসওয়ার্ড দেখুন'}
+                  style={{
+                    position: 'absolute',
+                    right: '10px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: '15px',
+                    padding: '4px',
+                  }}
+                >
+                  {showPassword ? '👁️' : '🔒'}
+                </button>
               </div>
+            </div>
 
+            {/* Forgot Password link (shown on Sign In) */}
+            {emailMode === 'login' && (
               <div
                 style={{
                   display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  marginBottom: '10px',
+                  justifyContent: 'flex-end',
+                  marginBottom: '12px',
                 }}
               >
                 <button
@@ -679,25 +512,69 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     padding: '2px 0',
                   }}
                 >
-                  📩 {resetSent ? '✓ রিসেট লিংক পাঠানো হয়েছে' : 'পাসওয়ার্ড রিসেট লিংক পাঠান'}
+                  {resetSent
+                    ? '✓ রিসেট লিংক পাঠানো হয়েছে (আবার পাঠান)'
+                    : 'পাসওয়ার্ড ভুলে গেছেন? রিসেট লিংক পাঠান'}
                 </button>
               </div>
+            )}
 
-              <button
-                type="submit"
-                className="md3-btn-filled"
-                disabled={isLoading}
-                style={{ width: '100%', height: '40px', fontSize: '13px' }}
-              >
-                {isLoading ? 'অপেক্ষা করুন...' : 'পাসওয়ার্ড দিয়ে লগইন'}
-              </button>
-            </form>
+            {/* Submit Button */}
+            <button
+              type="submit"
+              className="md3-btn-filled"
+              disabled={isLoading}
+              style={{
+                width: '100%',
+                height: '46px',
+                fontSize: '14px',
+                fontWeight: 700,
+                borderRadius: '12px',
+                marginTop: emailMode === 'register' ? '6px' : 0,
+              }}
+            >
+              {isLoading
+                ? 'অপেক্ষা করুন...'
+                : emailMode === 'login'
+                ? 'লগইন করুন'
+                : 'নতুন অ্যাকাউন্ট তৈরি করুন'}
+            </button>
+          </form>
+
+          {/* Mode Toggle Footer Helper */}
+          <div style={{ textAlign: 'center', marginTop: '10px' }}>
+            <button
+              type="button"
+              onClick={() => {
+                setEmailMode(emailMode === 'login' ? 'register' : 'login');
+                setHelperNotice(null);
+              }}
+              style={{
+                background: 'none',
+                border: 'none',
+                fontSize: '12px',
+                fontWeight: 600,
+                color: 'var(--md-sys-color-primary)',
+                cursor: 'pointer',
+                padding: '4px',
+              }}
+            >
+              {emailMode === 'login'
+                ? 'নতুন ব্যবহারকারী? নতুন অ্যাকাউন্ট তৈরি করুন →'
+                : 'আগে থেকেই অ্যাকাউন্ট আছে? লগইন করুন →'}
+            </button>
           </div>
-        )}
+        </div>
 
-        {/* Offline notice & Cancel button */}
-        <div style={{ textAlign: 'center', marginTop: '6px' }}>
-          <p style={{ margin: '0 0 6px', fontSize: '11px', color: 'var(--md-sys-color-on-surface-variant)' }}>
+        {/* Offline notice & Close button */}
+        <div style={{ textAlign: 'center', marginTop: '4px' }}>
+          <p
+            style={{
+              margin: '0 0 6px',
+              fontSize: '11px',
+              color: 'var(--md-sys-color-on-surface-variant)',
+            }}
+          >
             ✓ লগইন ছাড়াও আপনার মোবাইলে সব হিসাব ১০০% নিরাপদ ও অফলাইনে সচল থাকবে।
           </p>
           <button
