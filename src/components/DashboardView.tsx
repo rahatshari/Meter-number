@@ -2,6 +2,7 @@ import React from 'react';
 import { Customer } from '../types';
 import { toBengaliNum, isCustomerPaidThisMonth, toEnglishNum } from '../utils/bengali';
 import { CustomerCard } from './CustomerCard';
+import { AppUpdateInfo } from '../utils/appUpdater';
 
 interface DashboardViewProps {
   customers: Customer[];
@@ -11,6 +12,11 @@ interface DashboardViewProps {
   onCopyText: (text: string, label: string) => void;
   backupPulse: boolean;
   backupPulseText: string;
+  isOnline: boolean;
+  pendingSyncCount: number;
+  isSyncing: boolean;
+  updateInfo: AppUpdateInfo;
+  onOpenUpdateModal: () => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -21,9 +27,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onCopyText,
   backupPulse,
   backupPulseText,
+  isOnline,
+  pendingSyncCount,
+  isSyncing,
+  updateInfo,
+  onOpenUpdateModal,
 }) => {
-  const currentMonth = new Date().getFullYear() + '-' + (new Date().getMonth() + 1);
-
   // Exact calculations from real application data
   const totalCustomers = customers.length;
   const paidCustomers = customers.filter((c) => isCustomerPaidThisMonth(c)).length;
@@ -44,18 +53,91 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   return (
     <div style={{ paddingBottom: '96px' }}>
-      {/* Live Backup Feedback Banner */}
+      {/* In-App APK Update Notification Banner */}
+      {updateInfo.hasUpdate && (
+        <div
+          style={{
+            backgroundColor: 'var(--md-sys-color-primary-container)',
+            border: '1.5px solid var(--md-sys-color-primary)',
+            borderRadius: 'var(--md-shape-corner-md)',
+            padding: '12px 14px',
+            marginBottom: '14px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '10px',
+            boxShadow: 'var(--md-elevation-1)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+            <img
+              src="./icon.png"
+              alt="APK"
+              style={{
+                width: '34px',
+                height: '34px',
+                borderRadius: '8px',
+                backgroundColor: '#FFFFFF',
+                padding: '2px',
+                flexShrink: 0,
+              }}
+            />
+            <div style={{ minWidth: 0 }}>
+              <div
+                style={{
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  color: 'var(--md-sys-color-on-primary-container)',
+                }}
+              >
+                🎉 নতুন আপডেট (v{toBengaliNum(updateInfo.latestVersion)}) এসেছে!
+              </div>
+              <div
+                style={{
+                  fontSize: '11.5px',
+                  color: 'var(--md-sys-color-on-primary-container)',
+                  opacity: 0.9,
+                }}
+              >
+                অ্যাপের ভেতর থেকেই সরাসরি ডাউনলোড ও আপডেট করুন
+              </div>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="md3-btn-filled"
+            style={{
+              width: 'auto',
+              padding: '7px 14px',
+              fontSize: '12px',
+              whiteSpace: 'nowrap',
+              flexShrink: 0,
+            }}
+            onClick={onOpenUpdateModal}
+          >
+            আপডেট করুন
+          </button>
+        </div>
+      )}
+
+      {/* Offline / Auto-Sync Real-time Status Banner */}
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          backgroundColor: 'var(--md-sys-color-surface-container)',
-          border: '1px solid var(--md-sys-color-outline-variant)',
+          backgroundColor: !isOnline
+            ? 'var(--md-sys-color-warning-container)'
+            : 'var(--md-sys-color-surface-container)',
+          border: '1px solid',
+          borderColor: !isOnline
+            ? 'var(--md-sys-color-warning)'
+            : 'var(--md-sys-color-outline-variant)',
           borderRadius: 'var(--md-shape-corner-md)',
-          padding: '8px 14px',
+          padding: '9px 14px',
           marginBottom: '16px',
           boxShadow: 'var(--md-elevation-1)',
+          gap: '8px',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
@@ -64,12 +146,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               width: '8px',
               height: '8px',
               borderRadius: '50%',
-              backgroundColor: 'var(--md-sys-color-success)',
+              backgroundColor: !isOnline
+                ? 'var(--md-sys-color-warning)'
+                : 'var(--md-sys-color-success)',
               flexShrink: 0,
             }}
           />
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--md-sys-color-on-surface)' }}>
-            রিয়েল-টাইম ডেটা ডিরেক্টরি
+          <span
+            style={{
+              fontSize: '12.5px',
+              fontWeight: 600,
+              color: !isOnline
+                ? 'var(--md-sys-color-on-warning-container)'
+                : 'var(--md-sys-color-on-surface)',
+            }}
+          >
+            {!isOnline
+              ? 'অফলাইন মোড সচল — ইন্টারনেট পেলে স্বয়ংক্রিয় আপলোড হবে'
+              : 'অফলাইন ও অনলাইন অটো-সিঙ্ক সক্রিয়'}
           </span>
         </div>
         <div
@@ -81,14 +175,28 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             borderRadius: '16px',
             fontSize: '11px',
             fontWeight: 700,
+            whiteSpace: 'nowrap',
             backgroundColor: backupPulse
               ? 'var(--md-sys-color-success)'
+              : pendingSyncCount > 0
+              ? 'var(--md-sys-color-warning)'
               : 'var(--md-sys-color-primary-container)',
-            color: backupPulse ? '#FFFFFF' : 'var(--md-sys-color-on-primary-container)',
+            color:
+              backupPulse || pendingSyncCount > 0
+                ? '#FFFFFF'
+                : 'var(--md-sys-color-on-primary-container)',
             transition: 'all 0.2s',
           }}
         >
-          <span>{backupPulse ? backupPulseText : 'স্বয়ংক্রিয় ব্যাকআপ সক্রিয়'}</span>
+          <span>
+            {backupPulse
+              ? backupPulseText
+              : isSyncing
+              ? '☁️ আপলোড হচ্ছে...'
+              : pendingSyncCount > 0
+              ? `⏳ অপেক্ষমান সিঙ্ক: ${toBengaliNum(pendingSyncCount)}`
+              : '✓ নিরাপদ ব্যাকআপ'}
+          </span>
         </div>
       </div>
 

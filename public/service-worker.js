@@ -1,8 +1,9 @@
-const CACHE_NAME = 'bill-app-cache-v6';
+const CACHE_NAME = 'bill-app-cache-v7';
 const urlsToCache = [
   './',
   './index.html',
   './manifest.json',
+  './version.json',
   './icon.png',
   './pwa-192x192.png',
   './pwa-512x512.png',
@@ -11,7 +12,7 @@ const urlsToCache = [
   './apple-touch-icon.png'
 ];
 
-// Install Service Worker with resilient per-file caching
+// Install Service Worker with resilient per-file caching for 100% offline execution
 self.addEventListener('install', event => {
   self.skipWaiting();
   event.waitUntil(
@@ -38,12 +39,12 @@ self.addEventListener('activate', event => {
   );
 });
 
-// Serve requests: Network first with cache fallback
+// Serve requests: Network first with full offline cache fallback
 self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
 
   const url = new URL(event.request.url);
-  // Do not intercept external requests (Firebase, Google Auth, fonts)
+  // Do not intercept external requests (Firebase, GitHub API, Google Auth, fonts)
   if (url.origin !== self.location.origin) {
     return;
   }

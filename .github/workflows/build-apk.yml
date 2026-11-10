@@ -1,0 +1,138 @@
+name: Build Signed APK & Publish GitHub Release
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: 'apk-release-${{ github.ref }}'
+  cancel-in-progress: false
+
+jobs:
+  build-and-release-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Calculate Auto-Incremented App Version
+        id: version
+        run: |
+          RUN_NUM=${{ github.run_number }}
+          VERSION_CODE=$((100 + RUN_NUM))
+          VERSION_NAME="2.0.${RUN_NUM}"
+          BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          REPO_SLUG="${{ github.repository }}"
+          APK_FILENAME="Biddut-Bill-v${VERSION_NAME}.apk"
+          LATEST_APK_URL="https://github.com/${REPO_SLUG}/releases/download/v${VERSION_NAME}/${APK_FILENAME}"
+
+          echo "VERSION_CODE=${VERSION_CODE}" >> $GITHUB_OUTPUT
+          echo "VERSION_NAME=${VERSION_NAME}" >> $GITHUB_OUTPUT
+          echo "BUILD_DATE=${BUILD_DATE}" >> $GITHUB_OUTPUT
+          echo "APK_FILENAME=${APK_FILENAME}" >> $GITHUB_OUTPUT
+          echo "LATEST_APK_URL=${LATEST_APK_URL}" >> $GITHUB_OUTPUT
+
+          # Write public/version.json so both the APK and web host know the latest version
+          cat > public/version.json <<EOF
+          {
+            "version": "${VERSION_NAME}",
+            "versionCode": ${VERSION_CODE},
+            "releaseTag": "v${VERSION_NAME}",
+            "publishedAt": "${BUILD_DATE}",
+            "apkUrl": "${LATEST_APK_URL}",
+            "latestApkUrl": "https://github.com/${REPO_SLUG}/releases/latest/download/Biddut-Bill-latest.apk",
+            "releasePageUrl": "https://github.com/${REPO_SLUG}/releases/tag/v${VERSION_NAME}",
+            "signatureSha1": "A7:F8:FB:7B:E5:B5:E2:4F:6C:A2:43:CB:F2:E7:6F:D9:C5:0C:AE:62",
+            "notes": "স্বয়ংক্রিয় বিল্ড v${VERSION_NAME} — অফলাইন অটো-সিঙ্ক, একই সিগনেচার আপডেট এবং উন্নত পারফরম্যান্স।"
+          }
+          EOF
+          cat public/version.json
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Setup Java JDK 21 (for Android Gradle & APK Signing)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Build Web Application Bundle
+        env:
+          VITE_APP_VERSION: ${{ steps.version.outputs.VERSION_NAME }}
+          VITE_APP_VERSION_CODE: ${{ steps.version.outputs.VERSION_CODE }}
+          VITE_GITHUB_REPO: ${{ github.repository }}
+        run: npm run build
+
+      - name: Initialize & Configure Capacitor Android Project
+        env:
+          APP_VERSION: ${{ steps.version.outputs.VERSION_NAME }}
+          APP_VERSION_CODE: ${{ steps.version.outputs.VERSION_CODE }}
+        run: |
+          npx --yes @capacitor/cli@latest add android || true
+          npx --yes @capacitor/cli@latest copy android
+          node scripts/setup-android-apk.mjs
+          npx --yes @capacitor/cli@latest sync android
+
+      - name: Build Signed Release APK (Same Signature Keystore)
+        working-directory: ./android
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD || 'biddutbill2026' }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS || 'biddutbill' }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || 'biddutbill2026' }}
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+
+      - name: Prepare Signed APK Artifacts
+        run: |
+          mkdir -p release-artifacts
+          APK_PATH=$(find android/app/build/outputs/apk/release -name "*.apk" | head -n 1)
+          echo "Found built APK at: ${APK_PATH}"
+          cp "${APK_PATH}" "release-artifacts/${{ steps.version.outputs.APK_FILENAME }}"
+          cp "${APK_PATH}" "release-artifacts/Biddut-Bill-latest.apk"
+          cp public/version.json "release-artifacts/version.json"
+          ls -lh release-artifacts/
+
+      - name: Publish Signed APK to GitHub Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.VERSION_NAME }}
+          name: "বিদ্যুৎ বিল APK v${{ steps.version.outputs.VERSION_NAME }}"
+          body: |
+            ## ⚡ বিদ্যুৎ বিল — Android APK রিলিজ (v${{ steps.version.outputs.VERSION_NAME }})
+
+            - **অটোমেটিক ভার্সন**: `v${{ steps.version.outputs.VERSION_NAME }}` (Version Code: `${{ steps.version.outputs.VERSION_CODE }}`)
+            - **সিগনেচার (Same Signature)**: `SHA1: A7:F8:FB:7B:E5:B5:E2:4F:6C:A2:43:CB:F2:E7:6F:D9:C5:0C:AE:62` (পূর্বের অ্যাপ আনইনস্টল না করেই সরাসরি আপডেট হবে)
+            - **অফলাইন ও অটো-সিঙ্ক**: ইন্টারনেট ছাড়াই সকল কাজ সংরক্ষিত থাকবে এবং ইন্টারনেট পেলে স্বয়ংক্রিয়ভাবে ক্লাউডে আপলোড হবে।
+
+            ### 📥 ডাউনলোড ও আপডেট:
+            নিচের **`${{ steps.version.outputs.APK_FILENAME }}`** অথবা **`Biddut-Bill-latest.apk`** ফাইলে ক্লিক করে ডাউনলোড ও ইনস্টল করুন।
+          draft: false
+          prerelease: false
+          make_latest: true
+          files: |
+            release-artifacts/${{ steps.version.outputs.APK_FILENAME }}
+            release-artifacts/Biddut-Bill-latest.apk
+            release-artifacts/version.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,44 +1,73 @@
 import React from 'react';
 import { User } from 'firebase/auth';
 import { ThemeMode } from '../types';
+import { toBengaliNum } from '../utils/bengali';
 
 interface TopAppBarProps {
   currentUser: User | null;
   themeMode: ThemeMode;
+  isOnline: boolean;
+  pendingSyncCount: number;
+  isSyncing: boolean;
+  hasUpdate: boolean;
+  appVersion: string;
   onToggleTheme: () => void;
   onOpenAccount: () => void;
   onSearchClick: () => void;
-  onOpenInstall: () => void;
+  onOpenUpdateModal: () => void;
 }
 
 export const TopAppBar: React.FC<TopAppBarProps> = ({
   currentUser,
   themeMode,
+  isOnline,
+  pendingSyncCount,
+  isSyncing,
+  hasUpdate,
+  appVersion,
   onToggleTheme,
   onOpenAccount,
   onSearchClick,
-  onOpenInstall,
+  onOpenUpdateModal,
 }) => {
+  const getSubtitleStatus = () => {
+    if (!isOnline) {
+      return pendingSyncCount > 0
+        ? `অফলাইন · ${toBengaliNum(pendingSyncCount)}টি কাজ অটো-আপলোডের অপেক্ষায়`
+        : 'অফলাইন মোড · ইন্টারনেট ছাড়াই সচল';
+    }
+    if (isSyncing || pendingSyncCount > 0) {
+      return `অটো-আপলোড হচ্ছে (${toBengaliNum(pendingSyncCount)}টি)...`;
+    }
+    if (currentUser) {
+      return 'অনলাইন · স্বয়ংক্রিয় ক্লাউড সিঙ্ক সক্রিয়';
+    }
+    return `অফলাইন-ফার্স্ট · v${toBengaliNum(appVersion)}`;
+  };
+
   return (
     <header className="md3-top-app-bar">
       <div className="flex items-center gap-3 min-w-0">
         <div
           style={{
-            width: '36px',
-            height: '36px',
-            borderRadius: '10px',
-            background: 'var(--md-sys-color-primary)',
-            color: 'var(--md-sys-color-on-primary)',
+            width: '38px',
+            height: '38px',
+            borderRadius: '11px',
+            backgroundColor: '#FFFFFF',
+            border: '1px solid var(--md-sys-color-outline-variant)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             flexShrink: 0,
             boxShadow: 'var(--md-elevation-1)',
+            overflow: 'hidden',
           }}
         >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
-          </svg>
+          <img
+            src="./icon.png"
+            alt="বিদ্যুৎ বিল লোগো"
+            style={{ width: '32px', height: '32px', objectFit: 'contain' }}
+          />
         </div>
         <div className="min-w-0">
           <h1
@@ -49,19 +78,23 @@ export const TopAppBar: React.FC<TopAppBarProps> = ({
               color: 'var(--md-sys-color-on-surface)',
               letterSpacing: '-0.2px',
               lineHeight: 1.2,
+              whiteSpace: 'nowrap',
             }}
-            className="truncate"
           >
             বিদ্যুৎ বিল
           </h1>
           <div
             style={{
               fontSize: '11px',
-              color: 'var(--md-sys-color-on-surface-variant)',
-              lineHeight: 1.2,
+              color: !isOnline
+                ? 'var(--md-sys-color-warning)'
+                : 'var(--md-sys-color-on-surface-variant)',
+              fontWeight: !isOnline ? 600 : 400,
+              lineHeight: 1.25,
             }}
+            className="truncate"
           >
-            {currentUser ? 'ক্লাউড সিঙ্ক সক্রিয়' : 'অফলাইন মোড'}
+            {getSubtitleStatus()}
           </div>
         </div>
       </div>
@@ -91,10 +124,10 @@ export const TopAppBar: React.FC<TopAppBarProps> = ({
 
         <button
           type="button"
-          className="md3-icon-btn"
-          onClick={onOpenInstall}
-          title="অ্যাপ ইনস্টল করুন (Install App)"
-          aria-label="অ্যাপ ইনস্টল করুন"
+          className="md3-icon-btn relative"
+          onClick={onOpenUpdateModal}
+          title="অ্যাপ আপডেট চেক করুন"
+          aria-label="অ্যাপ আপডেট সেন্টার"
         >
           <svg
             width="20"
@@ -106,10 +139,25 @@ export const TopAppBar: React.FC<TopAppBarProps> = ({
             strokeLinecap="round"
             strokeLinejoin="round"
           >
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-            <polyline points="7 10 12 15 17 10" />
-            <line x1="12" y1="15" x2="12" y2="3" />
+            <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+            <path d="M3 3v5h5" />
+            <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
+            <path d="M16 16h5v5" />
           </svg>
+          {hasUpdate && (
+            <span
+              style={{
+                position: 'absolute',
+                top: '5px',
+                right: '5px',
+                width: '9px',
+                height: '9px',
+                borderRadius: '50%',
+                backgroundColor: 'var(--md-sys-color-error)',
+                border: '1.5px solid var(--md-sys-color-surface)',
+              }}
+            />
+          )}
         </button>
 
         <button

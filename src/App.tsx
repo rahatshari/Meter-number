@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   User,
   GoogleAuthProvider,
@@ -23,7 +23,26 @@ import {
   getCurrentMonthStr,
   isCustomerPaidThisMonth,
   toEnglishNum,
+  toBengaliNum,
 } from './utils/bengali';
+import {
+  PendingSyncItem,
+  loadPendingSyncQueue,
+  savePendingSyncQueue,
+  enqueueSyncMutation,
+  dequeueSyncMutation,
+  reconcileCloudWithPendingQueue,
+  setLastSyncTime,
+} from './utils/offlineSync';
+import {
+  APP_VERSION,
+  APP_VERSION_CODE,
+  APK_SIGNATURE_SHA1,
+  DEFAULT_APK_DOWNLOAD_URL,
+  DEFAULT_RELEASE_PAGE_URL,
+  AppUpdateInfo,
+  checkForAppUpdate,
+} from './utils/appUpdater';
 
 import { TopAppBar } from './components/TopAppBar';
 import { BottomNavBar } from './components/BottomNavBar';
@@ -36,7 +55,7 @@ import { ActionModal } from './components/ActionModal';
 import { ConfirmModal } from './components/ConfirmModal';
 import { AuthModal } from './components/AuthModal';
 import { AccountModal } from './components/AccountModal';
-import { InstallPromptModal } from './components/InstallPromptModal';
+import { UpdateModal } from './components/UpdateModal';
 import { Toast } from './components/Toast';
 
 export const App: React.FC = () => {
@@ -65,8 +84,54 @@ export const App: React.FC = () => {
     setThemeMode((prev) => (prev === 'dark' ? 'light' : 'dark'));
   };
 
+  // Online / Offline Connectivity & Pending Sync Queue State
+  const [isOnline, setIsOnline] = useState<boolean>(() =>
+    typeof navigator !== 'undefined' ? navigator.onLine : true
+  );
+  const [pendingQueue, setPendingQueue] = useState<PendingSyncItem[]>(() =>
+    loadPendingSyncQueue()
+  );
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const isFlushingRef = useRef<boolean>(false);
+
+  // App Version & In-App APK Auto-Update State
+  const [updateInfo, setUpdateInfo] = useState<AppUpdateInfo>({
+    currentVersion: APP_VERSION,
+    currentVersionCode: APP_VERSION_CODE,
+    latestVersion: APP_VERSION,
+    latestVersionCode: APP_VERSION_CODE,
+    hasUpdate: false,
+    apkDownloadUrl: DEFAULT_APK_DOWNLOAD_URL,
+    releasePageUrl: DEFAULT_RELEASE_PAGE_URL,
+    releaseNotes:
+      'অফলাইন ফার্স্ট ও স্বয়ংক্রিয় ক্লাউড সিঙ্ক, একই সিগনেচার APK এবং ইন-অ্যাপ অটো-আপডেট সংস্করণ।',
+    publishedAt: new Date().toISOString(),
+    signatureSha1: APK_SIGNATURE_SHA1,
+  });
+  const [isCheckingUpdate, setIsCheckingUpdate] = useState<boolean>(false);
+  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState<boolean>(false);
+
   // Customers and user state
-  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>(() => {
+    const saved = localStorage.getItem('billCustomers');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed.map((c) => ({
+            ...c,
+            mobile: c.mobile || '',
+            mother: c.mother || '',
+            dueDate: c.dueDate || '',
+            lastPaidMonth: c.lastPaidMonth || '',
+          }));
+        }
+      } catch (e) {
+        console.error('LocalStorage read error', e);
+      }
+    }
+    return [];
+  });
   const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   // Search & Filters (for CustomersView)
@@ -77,7 +142,6 @@ export const App: React.FC = () => {
   // Modal controls
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
-
   const [selectedCustomerForAction, setSelectedCustomerForAction] = useState<Customer | null>(null);
 
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
@@ -90,9 +154,7 @@ export const App: React.FC = () => {
 
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authInitialTab, setAuthInitialTab] = useState<AuthTab>('google');
-
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
-  const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
 
   // Toast / Snackbar
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -104,27 +166,37 @@ export const App: React.FC = () => {
   const [backupPulseText, setBackupPulseText] = useState('💾 লোকাল ব্যাকআপ হয়েছে');
   const backupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const showToast = (msg: string) => {
+  const showToast = useCallback((msg: string) => {
     setToastMessage(msg);
     setIsToastVisible(true);
     if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
     toastTimeoutRef.current = setTimeout(() => {
       setIsToastVisible(false);
-    }, 2800);
-  };
-
-  const notifyRealtimeBackup = (customMessage?: string) => {
-    setBackupPulse(true);
-    setBackupPulseText(currentUser ? '☁️ ক্লাউডে ব্যাকআপ হয়েছে' : '💾 লোকাল ব্যাকআপ হয়েছে');
-
-    if (backupTimerRef.current) clearTimeout(backupTimerRef.current);
-    backupTimerRef.current = setTimeout(() => {
-      setBackupPulse(false);
     }, 3000);
+  }, []);
 
-    const msg = customMessage || (currentUser ? '☁️ ক্লাউডে সাথে সাথে ব্যাকআপ হয়েছে!' : '💾 স্বয়ংক্রিয় ব্যাকআপ সম্পন্ন!');
-    showToast(msg);
-  };
+  const notifyRealtimeBackup = useCallback(
+    (customMessage?: string) => {
+      setBackupPulse(true);
+      const isCloudReady = isOnline && !!currentUser;
+      setBackupPulseText(
+        isCloudReady ? '☁️ ক্লাউডে ব্যাকআপ হয়েছে' : '💾 অফলাইন ফোনে সংরক্ষিত'
+      );
+
+      if (backupTimerRef.current) clearTimeout(backupTimerRef.current);
+      backupTimerRef.current = setTimeout(() => {
+        setBackupPulse(false);
+      }, 3000);
+
+      const msg =
+        customMessage ||
+        (isCloudReady
+          ? '☁️ ক্লাউডে সাথে সাথে ব্যাকআপ হয়েছে!'
+          : '💾 অফলাইনে সংরক্ষিত! ইন্টারনেট পেলে স্বয়ংক্রিয় আপলোড হবে।');
+      showToast(msg);
+    },
+    [isOnline, currentUser, showToast]
+  );
 
   // Local storage helpers
   const saveToLocalStorage = (list: Customer[]) => {
@@ -176,6 +248,9 @@ export const App: React.FC = () => {
       };
       await setDoc(doc(db, 'users', user.uid, 'customers', custId), payload);
     } catch (err) {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        throw err;
+      }
       handleFirestoreError(err, OperationType.WRITE, path);
     }
   };
@@ -186,11 +261,137 @@ export const App: React.FC = () => {
     try {
       await deleteDoc(doc(db, 'users', user.uid, 'customers', custId));
     } catch (err) {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        throw err;
+      }
       handleFirestoreError(err, OperationType.DELETE, path);
     }
   };
 
-  // Auth observer and Firestore listener
+  // Queue mutation helper (stores offline mutation and triggers auto-flush if online & signed in)
+  const queueMutation = useCallback(
+    (item: PendingSyncItem) => {
+      setPendingQueue((prev) => {
+        const next = enqueueSyncMutation(prev, item);
+        savePendingSyncQueue(next);
+        return next;
+      });
+    },
+    []
+  );
+
+  // Automatic Offline Queue Flush when online and signed in
+  const flushOfflineQueue = useCallback(
+    async (user: User | null, online: boolean) => {
+      if (!user || !online || isFlushingRef.current) return;
+      const currentQueue = loadPendingSyncQueue();
+      if (currentQueue.length === 0) return;
+
+      isFlushingRef.current = true;
+      setIsSyncing(true);
+
+      let flushedCount = 0;
+      let workingQueue = [...currentQueue];
+
+      try {
+        for (const item of currentQueue) {
+          if (typeof navigator !== 'undefined' && !navigator.onLine) break;
+          try {
+            if (item.action === 'upsert' && item.customer) {
+              await saveCustomerToFirestore(item.customer, user);
+            } else if (item.action === 'delete') {
+              await deleteCustomerFromFirestore(item.id, user);
+            }
+            workingQueue = dequeueSyncMutation(workingQueue, item.id, item.timestamp);
+            savePendingSyncQueue(workingQueue);
+            setPendingQueue(workingQueue);
+            flushedCount++;
+          } catch (err) {
+            console.warn('Will retry offline sync item when connection stabilizes:', item.id, err);
+          }
+        }
+
+        if (flushedCount > 0) {
+          setLastSyncTime();
+          showToast(
+            `☁️ ইন্টারনেট সংযোগে ${toBengaliNum(flushedCount)}টি অফলাইন কাজ স্বয়ংক্রিয়ভাবে আপলোড হয়েছে!`
+          );
+        }
+      } finally {
+        isFlushingRef.current = false;
+        setIsSyncing(false);
+      }
+    },
+    [showToast]
+  );
+
+  // Monitor browser/device online & offline events
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      const q = loadPendingSyncQueue();
+      if (q.length > 0 && auth.currentUser) {
+        showToast('🌐 ইন্টারনেট সংযোগ পাওয়া গেছে! অফলাইন কাজ স্বয়ংক্রিয়ভাবে আপলোড হচ্ছে...');
+        flushOfflineQueue(auth.currentUser, true);
+      } else {
+        showToast('🌐 ইন্টারনেট সংযোগ পুনরায় চালু হয়েছে');
+      }
+    };
+
+    const handleOffline = () => {
+      setIsOnline(false);
+      showToast('📴 অফলাইন মোড: ইন্টারনেট ছাড়াই অ্যাপ সচল আছে, সকল কাজ ফোনে সেভ হবে');
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [flushOfflineQueue, showToast]);
+
+  // Trigger queue flush whenever online + user + pending items exist
+  useEffect(() => {
+    if (isOnline && currentUser && pendingQueue.length > 0) {
+      flushOfflineQueue(currentUser, isOnline);
+    }
+  }, [isOnline, currentUser, pendingQueue.length, flushOfflineQueue]);
+
+  // Automatic In-App APK Update Check (runs on launch and when coming back online)
+  const handleCheckForUpdate = useCallback(
+    async (silent: boolean = false) => {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        if (!silent) {
+          showToast('📴 অফলাইনে আপডেট চেক করা সম্ভব নয়। ইন্টারনেট সংযোগ চালু করুন।');
+        }
+        return;
+      }
+
+      setIsCheckingUpdate(true);
+      try {
+        const info = await checkForAppUpdate(APP_VERSION, APP_VERSION_CODE);
+        setUpdateInfo(info);
+        if (info.hasUpdate) {
+          showToast(`🎉 অ্যাপের নতুন আপডেট (v${toBengaliNum(info.latestVersion)}) এসেছে!`);
+          setIsUpdateModalOpen(true);
+        } else if (!silent) {
+          showToast(`✓ আপনার অ্যাপটি সর্বশেষ ভার্সনে (v${toBengaliNum(info.currentVersion)}) আছে!`);
+        }
+      } finally {
+        setIsCheckingUpdate(false);
+      }
+    },
+    [showToast]
+  );
+
+  useEffect(() => {
+    if (isOnline) {
+      handleCheckForUpdate(true);
+    }
+  }, [isOnline, handleCheckForUpdate]);
+
+  // Auth observer and Firestore listener with Offline Queue Reconciliation
   useEffect(() => {
     let unsubscribeCustomers: (() => void) | null = null;
 
@@ -203,7 +404,10 @@ export const App: React.FC = () => {
       }
 
       if (user) {
-        showToast('স্বাগতম! অনলাইন ক্লাউড সিঙ্ক চালু হয়েছে');
+        // First flush any pending offline changes
+        if (typeof navigator === 'undefined' || navigator.onLine) {
+          flushOfflineQueue(user, true);
+        }
 
         const custPath = `users/${user.uid}/customers`;
         unsubscribeCustomers = onSnapshot(
@@ -227,21 +431,36 @@ export const App: React.FC = () => {
               });
             });
 
-            if (cloudCustomers.length > 0) {
-              setCustomers(cloudCustomers);
-              saveToLocalStorage(cloudCustomers);
+            const localList = loadLocalData();
+            const currentQueue = loadPendingSyncQueue();
+
+            if (cloudCustomers.length > 0 || currentQueue.length > 0) {
+              const reconciled = reconcileCloudWithPendingQueue(
+                cloudCustomers,
+                localList,
+                currentQueue
+              );
+              setCustomers(reconciled);
+              saveToLocalStorage(reconciled);
+            } else if (localList.length > 0) {
+              // Upload existing local data to cloud if cloud is newly initialized
+              setCustomers(localList);
+              localList.forEach((c) => {
+                queueMutation({
+                  id: String(c.id),
+                  action: 'upsert',
+                  customer: c,
+                  timestamp: Date.now(),
+                });
+              });
             } else {
-              // Upload local data to cloud if cloud is newly initialized
-              const localList = loadLocalData();
-              if (localList.length > 0) {
-                setCustomers(localList);
-                localList.forEach((c) => saveCustomerToFirestore(c, user));
-              } else {
-                setCustomers([]);
-              }
+              setCustomers([]);
             }
           },
           (error) => {
+            if (typeof navigator !== 'undefined' && !navigator.onLine) {
+              return;
+            }
             handleFirestoreError(error, OperationType.GET, custPath);
           }
         );
@@ -255,7 +474,7 @@ export const App: React.FC = () => {
       unsubscribeAuth();
       if (unsubscribeCustomers) unsubscribeCustomers();
     };
-  }, []);
+  }, [flushOfflineQueue, queueMutation]);
 
   const currentMonth = getCurrentMonthStr();
 
@@ -334,7 +553,7 @@ export const App: React.FC = () => {
     document.body.removeChild(temp);
   };
 
-  // Customer Save (Add / Edit)
+  // Customer Save (Add / Edit) — 100% Offline-First + Auto Sync Queue
   const handleSaveCustomer = (customer: Customer, isEdit: boolean) => {
     let nextList: Customer[];
     if (isEdit) {
@@ -345,16 +564,26 @@ export const App: React.FC = () => {
 
     setCustomers(nextList);
     saveToLocalStorage(nextList);
-    notifyRealtimeBackup(isEdit ? '✅ গ্রাহকের তথ্য সফলভাবে আপডেট হয়েছে!' : '✅ নতুন গ্রাহক সফলভাবে অ্যাড হয়েছে!');
 
-    if (currentUser) {
-      saveCustomerToFirestore(customer, currentUser).catch((err) =>
-        console.error('Firestore save customer error', err)
-      );
-    }
+    queueMutation({
+      id: String(customer.id),
+      action: 'upsert',
+      customer,
+      timestamp: Date.now(),
+    });
+
+    notifyRealtimeBackup(
+      isEdit
+        ? isOnline
+          ? '✅ গ্রাহকের তথ্য সফলভাবে আপডেট হয়েছে!'
+          : '💾 অফলাইনে আপডেট সংরক্ষিত! নেট পেলে স্বয়ংক্রিয় আপলোড হবে।'
+        : isOnline
+        ? '✅ নতুন গ্রাহক সফলভাবে অ্যাড হয়েছে!'
+        : '💾 অফলাইনে নতুন গ্রাহক সংরক্ষিত! নেট পেলে স্বয়ংক্রিয় আপলোড হবে।'
+    );
   };
 
-  // Payment Toggle
+  // Payment Toggle — 100% Offline-First + Auto Sync Queue
   const handleTogglePayment = (c: Customer) => {
     const isNowPaid = c.lastPaidMonth !== currentMonth;
     const updated: Customer = {
@@ -366,16 +595,21 @@ export const App: React.FC = () => {
     setCustomers(nextList);
     saveToLocalStorage(nextList);
 
-    notifyRealtimeBackup(isNowPaid ? '✅ বিল পরিশোধিত হিসেবে মার্ক করা হয়েছে!' : 'বিল আনপেইড করা হয়েছে!');
+    queueMutation({
+      id: String(updated.id),
+      action: 'upsert',
+      customer: updated,
+      timestamp: Date.now(),
+    });
 
-    if (currentUser) {
-      saveCustomerToFirestore(updated, currentUser).catch((err) =>
-        console.error('Firestore toggle payment error', err)
-      );
-    }
+    notifyRealtimeBackup(
+      isNowPaid
+        ? '✅ বিল পরিশোধিত হিসেবে মার্ক করা হয়েছে!'
+        : 'বিল আনপেইড করা হয়েছে!'
+    );
   };
 
-  // Delete Customer
+  // Delete Customer — 100% Offline-First + Auto Sync Queue
   const handleDeleteCustomer = (c: Customer) => {
     setConfirmConfig({
       title: 'গ্রাহকের তথ্য মুছুন',
@@ -385,13 +619,14 @@ export const App: React.FC = () => {
         const nextList = customers.filter((item) => item.id !== c.id);
         setCustomers(nextList);
         saveToLocalStorage(nextList);
-        notifyRealtimeBackup('🗑️ গ্রাহকের তথ্য মুছে ফেলা হয়েছে!');
 
-        if (currentUser) {
-          deleteCustomerFromFirestore(c.id, currentUser).catch((err) =>
-            console.error('Firestore delete customer error', err)
-          );
-        }
+        queueMutation({
+          id: String(c.id),
+          action: 'delete',
+          timestamp: Date.now(),
+        });
+
+        notifyRealtimeBackup('🗑️ গ্রাহকের তথ্য মুছে ফেলা হয়েছে!');
       },
     });
     setIsConfirmModalOpen(true);
@@ -403,7 +638,6 @@ export const App: React.FC = () => {
     if (mode === 'replace') {
       nextList = importedList;
     } else {
-      // Smart Merge
       nextList = [...customers];
       for (const nc of importedList) {
         const idx = nextList.findIndex(
@@ -426,19 +660,29 @@ export const App: React.FC = () => {
     setCustomers(nextList);
     saveToLocalStorage(nextList);
 
-    if (currentUser) {
-      showToast('ক্লাউডে সিঙ্ক হচ্ছে...');
-      try {
-        for (const c of nextList) {
-          await saveCustomerToFirestore(c, currentUser);
-        }
-        notifyRealtimeBackup('✅ সফলভাবে ইমপোর্ট সম্পন্ন এবং সব মোবাইলে সিঙ্ক হয়েছে!');
-      } catch (err) {
-        console.error('Cloud sync during import error', err);
-        notifyRealtimeBackup('✅ লোকাল ইমপোর্ট সফল!');
+    // Queue all imported customers for automatic cloud upload
+    const nowTs = Date.now();
+    setPendingQueue((prev) => {
+      let updatedQueue = [...prev];
+      for (const c of nextList) {
+        updatedQueue = enqueueSyncMutation(updatedQueue, {
+          id: String(c.id),
+          action: 'upsert',
+          customer: c,
+          timestamp: nowTs,
+        });
       }
+      savePendingSyncQueue(updatedQueue);
+      return updatedQueue;
+    });
+
+    if (currentUser && isOnline) {
+      await flushOfflineQueue(currentUser, true);
+      notifyRealtimeBackup('✅ সফলভাবে ইমপোর্ট সম্পন্ন এবং সব মোবাইলে সিঙ্ক হয়েছে!');
     } else {
-      notifyRealtimeBackup('✅ সফলভাবে ইমপোর্ট ও ব্যাকআপ সম্পন্ন হয়েছে!');
+      notifyRealtimeBackup(
+        '✅ অফলাইনে ইমপোর্ট সম্পন্ন! ইন্টারনেট পেলে স্বয়ংক্রিয়ভাবে ক্লাউডে আপলোড হবে।'
+      );
     }
   };
 
@@ -449,16 +693,49 @@ export const App: React.FC = () => {
       setIsAuthModalOpen(true);
       return;
     }
-    showToast('সব ডাটা ক্লাউডে সিঙ্ক হচ্ছে...');
-    try {
+    const nowTs = Date.now();
+    setPendingQueue((prev) => {
+      let updatedQueue = [...prev];
       for (const c of customers) {
-        await saveCustomerToFirestore(c, currentUser);
+        updatedQueue = enqueueSyncMutation(updatedQueue, {
+          id: String(c.id),
+          action: 'upsert',
+          customer: c,
+          timestamp: nowTs,
+        });
       }
-      showToast('✅ সফলভাবে ক্লাউডে সিঙ্ক হয়েছে! যে কোনো মোবাইলে দেখতে পাবেন।');
-      setIsAccountModalOpen(false);
-    } catch {
-      showToast('সিঙ্ক করতে সমস্যা হয়েছে!');
+      savePendingSyncQueue(updatedQueue);
+      return updatedQueue;
+    });
+
+    if (!isOnline) {
+      showToast('💾 সব ডেটা অটো-সিঙ্ক কিউতে যুক্ত হয়েছে! ইন্টারনেট পেলেই আপলোড হবে।');
+      return;
     }
+
+    showToast('সব ডাটা ক্লাউডে সিঙ্ক হচ্ছে...');
+    await flushOfflineQueue(currentUser, true);
+    showToast('✅ সফলভাবে ক্লাউডে সিঙ্ক হয়েছে! যে কোনো মোবাইলে দেখতে পাবেন।');
+    setIsAccountModalOpen(false);
+  };
+
+  // Simulate / Preview In-App Update Notification
+  const handleSimulateUpdateNotification = () => {
+    const nextCode = updateInfo.currentVersionCode + 1;
+    const simulatedVersion = `2.0.${nextCode - 100}`;
+    setUpdateInfo((prev) => ({
+      ...prev,
+      latestVersion: simulatedVersion,
+      latestVersionCode: nextCode,
+      hasUpdate: true,
+      releaseNotes:
+        `✨ নতুন সংস্করণ v${simulatedVersion} (বিল্ড #${nextCode}) উপলব্ধ!\n` +
+        `• ইন্টারনেট ছাড়াই সম্পূর্ণ অফলাইন সাপোর্ট ও অটো-আপলোড\n` +
+        `• একই সিগনেচার (Same Signature) APK আপডেট সুবিধা\n` +
+        `• উন্নত গতি ও মেটেরিয়াল ৩ ইউজার ইন্টারফেস`,
+    }));
+    setIsUpdateModalOpen(true);
+    showToast(`🔔 নতুন আপডেট v${toBengaliNum(simulatedVersion)} নোটিফিকেশন সক্রিয় হয়েছে!`);
   };
 
   // Auth methods
@@ -544,10 +821,15 @@ export const App: React.FC = () => {
 
   return (
     <div className="app-viewport-container">
-      {/* Material Design 3 Top App Bar */}
+      {/* Material Design 3 Top App Bar (Clean Native APK Header) */}
       <TopAppBar
         currentUser={currentUser}
         themeMode={themeMode}
+        isOnline={isOnline}
+        pendingSyncCount={pendingQueue.length}
+        isSyncing={isSyncing}
+        hasUpdate={updateInfo.hasUpdate}
+        appVersion={updateInfo.currentVersion}
         onToggleTheme={toggleTheme}
         onOpenAccount={() => {
           if (currentUser) {
@@ -560,7 +842,7 @@ export const App: React.FC = () => {
         onSearchClick={() => {
           setCurrentTab('customers');
         }}
-        onOpenInstall={() => setIsInstallModalOpen(true)}
+        onOpenUpdateModal={() => setIsUpdateModalOpen(true)}
       />
 
       {/* Main Content Body */}
@@ -577,6 +859,11 @@ export const App: React.FC = () => {
             onCopyText={handleCopyText}
             backupPulse={backupPulse}
             backupPulseText={backupPulseText}
+            isOnline={isOnline}
+            pendingSyncCount={pendingQueue.length}
+            isSyncing={isSyncing}
+            updateInfo={updateInfo}
+            onOpenUpdateModal={() => setIsUpdateModalOpen(true)}
           />
         )}
 
@@ -614,6 +901,11 @@ export const App: React.FC = () => {
           <SettingsView
             currentUser={currentUser}
             themeMode={themeMode}
+            isOnline={isOnline}
+            pendingSyncCount={pendingQueue.length}
+            isSyncing={isSyncing}
+            updateInfo={updateInfo}
+            isCheckingUpdate={isCheckingUpdate}
             onToggleTheme={toggleTheme}
             onOpenAuthModal={() => {
               setAuthInitialTab('google');
@@ -621,12 +913,14 @@ export const App: React.FC = () => {
             }}
             onLogout={handleLogout}
             onSyncAllLocalToCloud={handleSyncAllLocalToCloud}
+            onCheckForUpdate={() => handleCheckForUpdate(false)}
+            onOpenUpdateModal={() => setIsUpdateModalOpen(true)}
+            onSimulateUpdateNotification={handleSimulateUpdateNotification}
             customers={customers}
             onImportCustomers={handleImportCustomers}
             onCopyText={handleCopyText}
             onShowToast={showToast}
             onShowConfirm={handleShowConfirm}
-            onOpenInstall={() => setIsInstallModalOpen(true)}
           />
         )}
       </main>
@@ -710,10 +1004,14 @@ export const App: React.FC = () => {
         onLogout={handleLogout}
       />
 
-      {/* PWA Install Modal */}
-      <InstallPromptModal
-        isOpen={isInstallModalOpen}
-        onClose={() => setIsInstallModalOpen(false)}
+      {/* In-App APK Auto-Update Modal */}
+      <UpdateModal
+        isOpen={isUpdateModalOpen}
+        onClose={() => setIsUpdateModalOpen(false)}
+        updateInfo={updateInfo}
+        isChecking={isCheckingUpdate}
+        onCheckAgain={() => handleCheckForUpdate(false)}
+        onShowToast={showToast}
       />
 
       {/* Snackbar / Toast */}

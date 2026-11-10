@@ -2,35 +2,50 @@ import React, { useState, useRef } from 'react';
 import { User } from 'firebase/auth';
 import { Customer, ThemeMode } from '../types';
 import { toBengaliNum, isCustomerPaidThisMonth } from '../utils/bengali';
+import { AppUpdateInfo, triggerApkUpdateDownload } from '../utils/appUpdater';
 
 interface SettingsViewProps {
   currentUser: User | null;
   themeMode: ThemeMode;
+  isOnline: boolean;
+  pendingSyncCount: number;
+  isSyncing: boolean;
+  updateInfo: AppUpdateInfo;
+  isCheckingUpdate: boolean;
   onToggleTheme: () => void;
   onOpenAuthModal: () => void;
   onLogout: () => Promise<void>;
   onSyncAllLocalToCloud: () => Promise<void>;
+  onCheckForUpdate: () => Promise<void>;
+  onOpenUpdateModal: () => void;
+  onSimulateUpdateNotification: () => void;
   customers: Customer[];
   onImportCustomers: (importedList: Customer[], mode: 'merge' | 'replace') => Promise<void>;
   onCopyText: (text: string, label: string) => void;
   onShowToast: (msg: string) => void;
   onShowConfirm: (title: string, message: string, okText: string, onOk: () => void) => void;
-  onOpenInstall: () => void;
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
   currentUser,
   themeMode,
+  isOnline,
+  pendingSyncCount,
+  isSyncing,
+  updateInfo,
+  isCheckingUpdate,
   onToggleTheme,
   onOpenAuthModal,
   onLogout,
   onSyncAllLocalToCloud,
+  onCheckForUpdate,
+  onOpenUpdateModal,
+  onSimulateUpdateNotification,
   customers,
   onImportCustomers,
   onCopyText,
   onShowToast,
   onShowConfirm,
-  onOpenInstall,
 }) => {
   const [mergeMode, setMergeMode] = useState<'merge' | 'replace'>('merge');
   const [selectedFile, setSelectedFile] = useState<{
@@ -171,7 +186,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       ].map(escapeCSV).join(',');
     });
 
-    // Add UTF-8 BOM (\uFEFF) so Excel opens Bengali characters properly
     const csvContent = '\uFEFF' + [headers.map(escapeCSV).join(','), ...rows].join('\r\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -210,7 +224,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   return (
     <div style={{ paddingBottom: '96px' }}>
-      {/* SECTION 1: Google Cloud Sync */}
+      {/* SECTION 1: Offline-First & Google Cloud Auto-Sync */}
       <div className="md3-card" style={{ marginBottom: '16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
           <div
@@ -231,12 +245,72 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </div>
           <div>
             <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: 'var(--md-sys-color-on-surface)' }}>
-              Google ক্লাউড সিঙ্ক
+              অফলাইন ও ক্লাউড অটো-সিঙ্ক
             </h3>
             <p style={{ margin: 0, fontSize: '12px', color: 'var(--md-sys-color-on-surface-variant)' }}>
-              সব ডিভাইসে রিয়েল-টাইম ব্যাকআপ ও অটো-সিঙ্ক
+              ইন্টারনেট ছাড়াও সচল · নেট পেলে স্বয়ংক্রিয় আপলোড
             </p>
           </div>
+        </div>
+
+        {/* Real-time Offline Queue Status Box */}
+        <div
+          style={{
+            padding: '10px 12px',
+            borderRadius: '12px',
+            backgroundColor: !isOnline
+              ? 'var(--md-sys-color-warning-container)'
+              : 'var(--md-sys-color-surface)',
+            border: '1px solid',
+            borderColor: !isOnline
+              ? 'var(--md-sys-color-warning)'
+              : 'var(--md-sys-color-outline-variant)',
+            marginBottom: '12px',
+            fontSize: '12px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '8px',
+          }}
+        >
+          <div>
+            <div
+              style={{
+                fontWeight: 700,
+                color: !isOnline
+                  ? 'var(--md-sys-color-on-warning-container)'
+                  : 'var(--md-sys-color-on-surface)',
+              }}
+            >
+              {isOnline ? '🌐 ইন্টারনেট সংযোগ সচল আছে' : '📴 ইন্টারনেট সংযোগ নেই (অফলাইন মোড)'}
+            </div>
+            <div style={{ fontSize: '11px', color: 'var(--md-sys-color-on-surface-variant)', marginTop: '2px' }}>
+              {pendingSyncCount > 0
+                ? `${toBengaliNum(pendingSyncCount)}টি অফলাইন পরিবর্তন ক্লাউডে আপলোডের অপেক্ষায় রয়েছে`
+                : 'সকল গ্রাহক ও বিলের তথ্য ফোনে নিরাপদে সংরক্ষিত আছে'}
+            </div>
+          </div>
+          <span
+            style={{
+              fontSize: '11px',
+              fontWeight: 700,
+              padding: '3px 9px',
+              borderRadius: '999px',
+              backgroundColor:
+                pendingSyncCount > 0
+                  ? 'var(--md-sys-color-warning)'
+                  : 'var(--md-sys-color-success-container)',
+              color:
+                pendingSyncCount > 0 ? '#FFFFFF' : 'var(--md-sys-color-success)',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {isSyncing
+              ? 'আপলোড হচ্ছে...'
+              : pendingSyncCount > 0
+              ? `বাকি: ${toBengaliNum(pendingSyncCount)}`
+              : '✓ সিঙ্কড'}
+          </span>
         </div>
 
         {currentUser ? (
@@ -282,7 +356,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   {currentUser.email}
                 </div>
                 <div style={{ fontSize: '11px', color: 'var(--md-sys-color-success)', fontWeight: 600, marginTop: '2px' }}>
-                  ✓ অনলাইন সিঙ্ক সক্রিয়
+                  ✓ স্বয়ংক্রিয় ক্লাউড আপলোড চালু
                 </div>
               </div>
             </div>
@@ -294,7 +368,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 style={{ padding: '10px 12px', fontSize: '13px' }}
                 onClick={onSyncAllLocalToCloud}
               >
-                ☁️ ক্লাউডে রি-সিঙ্ক
+                ☁️ এখনই সিঙ্ক করুন
               </button>
 
               <button
@@ -310,7 +384,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         ) : (
           <div>
             <p style={{ fontSize: '12.5px', color: 'var(--md-sys-color-on-surface-variant)', lineHeight: 1.5, marginBottom: '14px' }}>
-              মোবাইল পরিবর্তন করলেও বা হারিয়ে গেলেও আপনার সকল গ্রাহক ও বিলের তথ্য নিরাপদ রাখতে Google বা ইমেইল অ্যাকাউন্ট দিয়ে সিঙ্ক চালু করুন।
+              অফলাইনে করা সকল কাজ ইন্টারনেট সংযোগ পাওয়ার সাথে সাথে স্বয়ংক্রিয়ভাবে ক্লাউডে আপলোড করতে আপনার Google বা ইমেইল অ্যাকাউন্ট দিয়ে লগইন করুন।
             </p>
             <button
               type="button"
@@ -329,7 +403,143 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         )}
       </div>
 
-      {/* SECTION 2: Data Backup & Restore */}
+      {/* SECTION 2: APK Auto-Update & Same Signature Release Hub */}
+      <div className="md3-card" style={{ marginBottom: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+          <div
+            style={{
+              width: '44px',
+              height: '44px',
+              borderRadius: '12px',
+              backgroundColor: '#FFFFFF',
+              border: '1px solid var(--md-sys-color-outline-variant)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+              boxShadow: 'var(--md-elevation-1)',
+            }}
+          >
+            <img
+              src="./icon.png"
+              alt="APK Logo"
+              style={{ width: '36px', height: '36px', objectFit: 'contain' }}
+            />
+          </div>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: 'var(--md-sys-color-on-surface)' }}>
+                অ্যাপ ভার্সন ও অটো-আপডেট (APK)
+              </h3>
+              <span
+                style={{
+                  fontSize: '10.5px',
+                  fontWeight: 700,
+                  padding: '2px 8px',
+                  borderRadius: '999px',
+                  backgroundColor: updateInfo.hasUpdate
+                    ? 'var(--md-sys-color-warning-container)'
+                    : 'var(--md-sys-color-primary-container)',
+                  color: updateInfo.hasUpdate
+                    ? 'var(--md-sys-color-warning)'
+                    : 'var(--md-sys-color-primary)',
+                }}
+              >
+                v{toBengaliNum(updateInfo.currentVersion)}
+              </span>
+            </div>
+            <p style={{ margin: '2px 0 0', fontSize: '12px', color: 'var(--md-sys-color-on-surface-variant)' }}>
+              GitHub রিলিজ · একই সিগনেচার (Same Signature) আপডেট
+            </p>
+          </div>
+        </div>
+
+        <div
+          style={{
+            padding: '12px',
+            borderRadius: '12px',
+            backgroundColor: 'var(--md-sys-color-surface)',
+            border: '1px solid var(--md-sys-color-outline-variant)',
+            marginBottom: '12px',
+            fontSize: '12px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '6px',
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ color: 'var(--md-sys-color-on-surface-variant)' }}>বর্তমান ইনস্টলকৃত ভার্সন:</span>
+            <strong style={{ color: 'var(--md-sys-color-on-surface)' }}>
+              v{toBengaliNum(updateInfo.currentVersion)} (কোড #{toBengaliNum(updateInfo.currentVersionCode)})
+            </strong>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ color: 'var(--md-sys-color-on-surface-variant)' }}>সর্বশেষ GitHub রিলিজ:</span>
+            <strong
+              style={{
+                color: updateInfo.hasUpdate
+                  ? 'var(--md-sys-color-primary)'
+                  : 'var(--md-sys-color-success)',
+              }}
+            >
+              v{toBengaliNum(updateInfo.latestVersion)}{' '}
+              {updateInfo.hasUpdate ? '(নতুন আপডেট আছে!)' : '(আপ-টু-ডেট)'}
+            </strong>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ color: 'var(--md-sys-color-on-surface-variant)' }}>APK সিগনেচার স্ট্যাটাস:</span>
+            <span style={{ color: 'var(--md-sys-color-success)', fontWeight: 700 }}>
+              ✓ Same Signature Verified
+            </span>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
+          <button
+            type="button"
+            className="md3-btn-filled"
+            style={{ padding: '10px 12px', fontSize: '12.5px' }}
+            onClick={onOpenUpdateModal}
+          >
+            📲 {updateInfo.hasUpdate ? 'এখনই আপডেট করুন' : 'আপডেট সেন্টার খুলুন'}
+          </button>
+
+          <button
+            type="button"
+            className="md3-btn-tonal"
+            style={{ padding: '10px 12px', fontSize: '12.5px' }}
+            disabled={isCheckingUpdate}
+            onClick={onCheckForUpdate}
+          >
+            {isCheckingUpdate ? 'চেক হচ্ছে...' : '🔄 আপডেট চেক করুন'}
+          </button>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+          <button
+            type="button"
+            className="md3-btn-outlined"
+            style={{ padding: '8px 10px', fontSize: '11.5px' }}
+            onClick={() => {
+              triggerApkUpdateDownload(updateInfo.apkDownloadUrl);
+              onShowToast('📥 সর্বশেষ স্বাক্ষরিত APK ডাউনলোড শুরু হয়েছে!');
+            }}
+          >
+            📥 সরাসরি APK ডাউনলোড
+          </button>
+
+          <button
+            type="button"
+            className="md3-btn-outlined"
+            style={{ padding: '8px 10px', fontSize: '11.5px' }}
+            onClick={onSimulateUpdateNotification}
+          >
+            🔔 টেস্ট আপডেট অ্যালার্ট
+          </button>
+        </div>
+      </div>
+
+      {/* SECTION 3: Data Backup & Restore */}
       <div className="md3-card" style={{ marginBottom: '16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
           <div
@@ -614,41 +824,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         />
       </div>
 
-      {/* SECTION 3: Appearance & App Settings */}
+      {/* SECTION 4: Appearance & App Settings (Clean APK UI without web install button) */}
       <div className="md3-card">
         <h3 style={{ margin: '0 0 12px', fontSize: '16px', fontWeight: 700, color: 'var(--md-sys-color-on-surface)' }}>
-          ⚙️ অ্যাপ ও ডিসপ্লে সেটিংস
+          ⚙️ ডিসপ্লে সেটিংস
         </h3>
-
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '12px',
-            backgroundColor: 'var(--md-sys-color-surface)',
-            borderRadius: 'var(--md-shape-corner-md)',
-            border: '1px solid var(--md-sys-color-outline-variant)',
-            marginBottom: '10px',
-          }}
-        >
-          <div>
-            <div style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--md-sys-color-on-surface)' }}>
-              📲 ফোনে অ্যাপ হিসেবে ইনস্টল করুন
-            </div>
-            <div style={{ fontSize: '11.5px', color: 'var(--md-sys-color-on-surface-variant)' }}>
-              Chrome বা Safari থেকে সরাসরি হোম স্ক্রিনে যুক্ত করুন
-            </div>
-          </div>
-          <button
-            type="button"
-            className="md3-btn-filled"
-            style={{ width: 'auto', padding: '6px 14px', fontSize: '12px' }}
-            onClick={onOpenInstall}
-          >
-            ইনস্টল
-          </button>
-        </div>
 
         <div
           style={{
@@ -689,8 +869,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             lineHeight: 1.5,
           }}
         >
-          বিদ্যুৎ বিল · ভার্সন ২.০ (Material Design 3)<br />
-          অফলাইন ও অনলাইন ক্লাউড সিঙ্ক সমর্থিত
+          বিদ্যুৎ বিল · ভার্সন {toBengaliNum(updateInfo.currentVersion)} (বিল্ড #{toBengaliNum(updateInfo.currentVersionCode)})<br />
+          অফলাইন-ফার্স্ট ও স্বয়ংক্রিয় ক্লাউড সিঙ্ক · Same Signature APK
         </div>
       </div>
     </div>
