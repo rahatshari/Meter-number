@@ -62,16 +62,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: 'npm'
 
       - name: Setup Java JDK 21 (for Android Gradle & APK Signing)
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '21'
-
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
 
       - name: Install Dependencies
         run: npm install
@@ -83,19 +79,21 @@ jobs:
           VITE_GITHUB_REPO: ${{ github.repository }}
         run: npm run build
 
-      - name: Initialize & Configure Capacitor Android Project
+      - name: Configure & Sync Capacitor Android Project
         env:
           APP_VERSION: ${{ steps.version.outputs.VERSION_NAME }}
           APP_VERSION_CODE: ${{ steps.version.outputs.VERSION_CODE }}
         run: |
-          npx --yes @capacitor/cli@latest add android || true
-          npx --yes @capacitor/cli@latest copy android
+          if [ ! -d "android" ]; then
+            npx cap add android
+          fi
           node scripts/setup-android-apk.mjs
-          npx --yes @capacitor/cli@latest sync android
+          npx cap sync android
 
       - name: Build Signed Release APK (Same Signature Keystore)
         working-directory: ./android
         env:
+          ANDROID_HOME: ${{ env.ANDROID_HOME || '/usr/local/lib/android/sdk' }}
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD || 'biddutbill2026' }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS || 'biddutbill' }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || 'biddutbill2026' }}
@@ -107,7 +105,11 @@ jobs:
         run: |
           mkdir -p release-artifacts
           APK_PATH=$(find android/app/build/outputs/apk/release -name "*.apk" | head -n 1)
-          echo "Found built APK at: ${APK_PATH}"
+          if [ -z "$APK_PATH" ] || [ ! -f "$APK_PATH" ]; then
+            echo "::error::Release APK was not generated in android/app/build/outputs/apk/release"
+            exit 1
+          fi
+          echo "Found signed APK at: ${APK_PATH}"
           cp "${APK_PATH}" "release-artifacts/${{ steps.version.outputs.APK_FILENAME }}"
           cp "${APK_PATH}" "release-artifacts/Biddut-Bill-latest.apk"
           cp public/version.json "release-artifacts/version.json"

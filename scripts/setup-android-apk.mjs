@@ -44,8 +44,9 @@ if (fs.existsSync(buildGradlePath)) {
   gradleContent = gradleContent.replace(/versionCode\s+\d+/, `versionCode ${versionCode}`);
   gradleContent = gradleContent.replace(/versionName\s+"[^"]*"/, `versionName "${versionName}"`);
 
-  // Inject signingConfigs if not already injected
-  const signingBlock = `
+  // Inject signingConfigs and wire into buildTypes
+  if (!gradleContent.includes('biddut-bill-release.p12')) {
+    const signingBlock = `
     signingConfigs {
         release {
             storeFile file("biddut-bill-release.p12")
@@ -58,14 +59,20 @@ if (fs.existsSync(buildGradlePath)) {
         }
     }`;
 
-  if (!gradleContent.includes('biddut-bill-release.p12')) {
+    // Place signingConfigs right before buildTypes
     gradleContent = gradleContent.replace(
-      /buildTypes\s*\{/,
-      `${signingBlock}\n    buildTypes {\n        debug {\n            signingConfig signingConfigs.release\n        }`
-    );
-    gradleContent = gradleContent.replace(
-      /release\s*\{/,
-      `release {\n            signingConfig signingConfigs.release`
+      /buildTypes\s*\{[\s\S]*?release\s*\{[\s\S]*?\}\s*\}/,
+      `${signingBlock}
+    buildTypes {
+        debug {
+            signingConfig signingConfigs.release
+        }
+        release {
+            signingConfig signingConfigs.release
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }`
     );
   }
 

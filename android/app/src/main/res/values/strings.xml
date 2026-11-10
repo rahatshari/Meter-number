@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">বিদ্যুৎ বিল</string>
+    <string name="title_activity_main">বিদ্যুৎ বিল</string>
+    <string name="package_name">com.rahatshari.meternumber</string>
+    <string name="custom_url_scheme">com.rahatshari.meternumber</string>
+</resources>

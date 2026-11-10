@@ -1,0 +1,11 @@
+{
+  "version": "2.0.1",
+  "versionCode": 101,
+  "releaseTag": "v2.0.1",
+  "publishedAt": "2026-11-10T00:00:00Z",
+  "apkUrl": "https://github.com/rahatshari/Meter-number/releases/latest/download/Biddut-Bill-latest.apk",
+  "latestApkUrl": "https://github.com/rahatshari/Meter-number/releases/latest/download/Biddut-Bill-latest.apk",
+  "releasePageUrl": "https://github.com/rahatshari/Meter-number/releases/latest",
+  "signatureSha1": "A7:F8:FB:7B:E5:B5:E2:4F:6C:A2:43:CB:F2:E7:6F:D9:C5:0C:AE:62",
+  "notes": "অফলাইন ফার্স্ট ও স্বয়ংক্রিয় ক্লাউড সিঙ্ক, একই সিগনেচার APK এবং ইন-অ্যাপ অটো-আপডেট সংস্করণ।"
+}

@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>বিদ্যুৎ বিল</title>
+    <meta name="description" content="Electricity Bill - বিদ্যুৎ বিল ও গ্রাহকের তথ্য সহজে ট্র্যাক এবং পরিচালনা করার অ্যাপ্লিকেশন">
+    <meta property="og:title" content="বিদ্যুৎ বিল">
+    <meta property="og:description" content="Electricity Bill - বিদ্যুৎ বিল ও গ্রাহকের তথ্য সহজে ট্র্যাক এবং পরিচালনা করার অ্যাপ্লিকেশন">
+    
+    <!-- PWA Links & Meta -->
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#4F46E5">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="বিদ্যুৎ বিল">
+    <link rel="icon" type="image/png" sizes="192x192" href="./pwa-192x192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="./pwa-512x512.png">
+    <link rel="icon" type="image/png" href="./icon.png">
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png">
+
+    <!-- Noto Sans Bengali font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script type="module" crossorigin src="./assets/index-DdRRCqXx.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-SL5LYL2d.css">
+</head>
+<body>
+    <div id="root"></div>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('./service-worker.js', { scope: './' })
+            .then(reg => console.log('SW Registered:', reg.scope))
+            .catch(err => console.warn('SW Registration Error:', err));
+        });
+      }
+    </script>
+</body>
+</html>
