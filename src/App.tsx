@@ -43,6 +43,7 @@ import {
   AppUpdateInfo,
   checkForAppUpdate,
 } from './utils/appUpdater';
+import { loginWithJustEmail } from './utils/authHelpers';
 
 import { TopAppBar } from './components/TopAppBar';
 import { BottomNavBar } from './components/BottomNavBar';
@@ -745,17 +746,44 @@ export const App: React.FC = () => {
     try {
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
-      showToast('গুগল লগইন উইন্ডো খোলা হচ্ছে...');
+      showToast('গুগল অ্যাকাউন্ট নির্বাচন উইন্ডো খোলা হচ্ছে...');
       await signInWithPopup(auth, provider);
       showToast('✓ আপনার Gmail দিয়ে সফলভাবে লগইন হয়েছে!');
     } catch (error: any) {
       console.error('Google Sign-In Error:', error);
-      if (error?.code === 'auth/popup-closed-by-user') {
+      const code = error?.code || '';
+      if (code === 'auth/popup-closed-by-user') {
         showToast('লগইন উইন্ডো বন্ধ করা হয়েছে');
+      } else if (code === 'auth/unauthorized-domain' || String(error?.message).includes('unauthorized domain')) {
+        showToast('⚠️ অথরাইজেশন ফেইলড: Firebase-এ rahatshari.github.io ডোমেন যোগ করতে হবে');
       } else {
         showToast('লগইন সম্পন্ন হয়নি: ' + (error?.message || 'আবার চেষ্টা করুন'));
       }
       throw error;
+    }
+  };
+
+  const handleJustEmailLogin = async (email: string) => {
+    try {
+      showToast('Gmail দিয়ে লগইন হচ্ছে...');
+      const res = await loginWithJustEmail(auth, email);
+      if (res.isNewUser) {
+        showToast('✓ নতুন অ্যাকাউন্ট প্রস্তুত ও সফলভাবে লগইন হয়েছে!');
+      } else {
+        showToast('✓ আপনার Gmail দিয়ে সফলভাবে লগইন হয়েছে!');
+      }
+    } catch (err: any) {
+      console.error('Direct Gmail Login Error:', err);
+      let msg = 'লগইন ব্যর্থ হয়েছে: ';
+      if (err.code === 'auth/invalid-email') {
+        msg = 'সঠিক Gmail ঠিকানা লিখুন';
+      } else if (err.code === 'auth/account-exists-with-different-credential') {
+        msg = 'এই Gmail-টিতে পূর্বে অন্য পাসওয়ার্ড দেওয়া হয়েছিল। নিচের বক্সে পাসওয়ার্ড দিন অথবা রিসেট লিংক পাঠান।';
+      } else {
+        msg += err.message || '';
+      }
+      showToast(msg);
+      throw err;
     }
   };
 
@@ -991,6 +1019,7 @@ export const App: React.FC = () => {
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
         onGoogleLogin={handleGoogleLogin}
+        onJustEmailLogin={handleJustEmailLogin}
         onEmailLogin={handleEmailLogin}
         onEmailRegister={handleEmailRegister}
         onForgotPassword={handleForgotPassword}

@@ -36,6 +36,14 @@ if (fs.existsSync(keystoreSrc)) {
   console.warn('⚠️ Keystore not found at', keystoreSrc);
 }
 
+// 1.1 Copy google-services.json into android/app/
+const googleServicesSrc = path.join(rootDir, 'google-services.json');
+const googleServicesDest = path.join(appDir, 'google-services.json');
+if (fs.existsSync(googleServicesSrc)) {
+  fs.copyFileSync(googleServicesSrc, googleServicesDest);
+  console.log('✅ Copied google-services.json into android/app/');
+}
+
 // 2. Patch android/app/build.gradle for auto-versioning and Same-Signature signingConfig
 if (fs.existsSync(buildGradlePath)) {
   let gradleContent = fs.readFileSync(buildGradlePath, 'utf8');

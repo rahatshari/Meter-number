@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "642666694691",
+    "project_id": "electric-20c05",
+    "storage_bucket": "electric-20c05.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:642666694691:android:b496aa83d01ceef65d8996",
+        "android_client_info": {
+          "package_name": "rahatshari.github.io"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "642666694691-7jdcvl05jek4drlr0is8ft79immhsrrq.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBgVUNfPvuda_A6u3amqWoiu2s0nhY4rQE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "642666694691-7jdcvl05jek4drlr0is8ft79immhsrrq.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
