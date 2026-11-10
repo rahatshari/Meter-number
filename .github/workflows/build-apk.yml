@@ -42,6 +42,17 @@ jobs:
           echo "APK_FILENAME=${APK_FILENAME}" >> $GITHUB_OUTPUT
           echo "LATEST_APK_URL=${LATEST_APK_URL}" >> $GITHUB_OUTPUT
 
+          # Extract recent git commits to automatically generate release notes
+          COMMITS=$(git log -n 5 --no-merges --pretty=format:"• %s" || echo "• পারফরম্যান্স ও স্থায়িত্ব বৃদ্ধি")
+          COMMIT_NOTES_JSON=$(echo "$COMMITS" | sed ':a;N;$!ba;s/\n/\\n/g' | sed 's/"/\\"/g')
+          if [ -z "$COMMIT_NOTES_JSON" ]; then
+            COMMIT_NOTES_JSON="• স্বয়ংক্রিয় রিলিজ ও পারফরম্যান্স উন্নয়ন"
+          fi
+
+          echo "COMMITS<<EOF" >> $GITHUB_OUTPUT
+          echo "$COMMITS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
           # Write public/version.json so both the APK and web host know the latest version
           cat > public/version.json <<EOF
           {
@@ -53,7 +64,7 @@ jobs:
             "latestApkUrl": "https://github.com/${REPO_SLUG}/releases/latest/download/Biddut-Bill-latest.apk",
             "releasePageUrl": "https://github.com/${REPO_SLUG}/releases/tag/v${VERSION_NAME}",
             "signatureSha1": "A7:F8:FB:7B:E5:B5:E2:4F:6C:A2:43:CB:F2:E7:6F:D9:C5:0C:AE:62",
-            "notes": "স্বয়ংক্রিয় বিল্ড v${VERSION_NAME} — অফলাইন অটো-সিঙ্ক, একই সিগনেচার আপডেট এবং উন্নত পারফরম্যান্স।"
+            "notes": "✨ নতুন সংস্করণ v${VERSION_NAME} পরিবর্তনসমূহ:\n${COMMIT_NOTES_JSON}\n\n🔒 Same Signature: কোনো পূর্বের ডেটা না হারিয়ে সরাসরি আপডেট হবে।"
           }
           EOF
           cat public/version.json
@@ -123,6 +134,10 @@ jobs:
           body: |
             ## ⚡ বিদ্যুৎ বিল — Android APK রিলিজ (v${{ steps.version.outputs.VERSION_NAME }})
 
+            ### 📋 রিলিজ নোট ও পরিবর্তনসমূহ (Changelog):
+            ${{ steps.version.outputs.COMMITS }}
+
+            ---
             - **অটোমেটিক ভার্সন**: `v${{ steps.version.outputs.VERSION_NAME }}` (Version Code: `${{ steps.version.outputs.VERSION_CODE }}`)
             - **সিগনেচার (Same Signature)**: `SHA1: A7:F8:FB:7B:E5:B5:E2:4F:6C:A2:43:CB:F2:E7:6F:D9:C5:0C:AE:62` (পূর্বের অ্যাপ আনইনস্টল না করেই সরাসরি আপডেট হবে)
             - **অফলাইন ও অটো-সিঙ্ক**: ইন্টারনেট ছাড়াই সকল কাজ সংরক্ষিত থাকবে এবং ইন্টারনেট পেলে স্বয়ংক্রিয়ভাবে ক্লাউডে আপলোড হবে।

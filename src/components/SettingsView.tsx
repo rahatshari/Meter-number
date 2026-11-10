@@ -3,6 +3,7 @@ import { User } from 'firebase/auth';
 import { Customer, ThemeMode } from '../types';
 import { toBengaliNum, isCustomerPaidThisMonth } from '../utils/bengali';
 import { AppUpdateInfo, triggerApkUpdateDownload } from '../utils/appUpdater';
+import { UserAvatar } from './UserAvatar';
 
 interface SettingsViewProps {
   currentUser: User | null;
@@ -327,27 +328,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 border: '1px solid var(--md-sys-color-outline-variant)',
               }}
             >
-              <div
-                style={{
-                  width: '42px',
-                  height: '42px',
-                  borderRadius: '50%',
-                  overflow: 'hidden',
-                  backgroundColor: 'var(--md-sys-color-primary-container)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontWeight: 700,
-                  color: 'var(--md-sys-color-primary)',
-                  flexShrink: 0,
-                }}
-              >
-                {currentUser.photoURL ? (
-                  <img src={currentUser.photoURL} alt="User" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : (
-                  (currentUser.displayName || currentUser.email || 'U').charAt(0).toUpperCase()
-                )}
-              </div>
+              <UserAvatar user={currentUser} size={46} showStatusDot={true} />
               <div style={{ minWidth: 0, flex: 1 }}>
                 <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--md-sys-color-on-surface)' }} className="truncate">
                   {currentUser.displayName || 'সম্মানিত ব্যবহারকারী'}
@@ -537,6 +518,24 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             🔔 টেস্ট আপডেট অ্যালার্ট
           </button>
         </div>
+
+        <button
+          type="button"
+          className="md3-btn-tonal"
+          style={{
+            width: '100%',
+            marginTop: '8px',
+            padding: '9px 12px',
+            fontSize: '12.5px',
+            justifyContent: 'center',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+          }}
+          onClick={onOpenUpdateModal}
+        >
+          <span>📋</span> সকল রিলিজ নোট ও পরিবর্তনসমূহ দেখুন
+        </button>
       </div>
 
       {/* SECTION 3: Data Backup & Restore */}

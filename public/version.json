@@ -2,10 +2,10 @@
   "version": "2.0.1",
   "versionCode": 101,
   "releaseTag": "v2.0.1",
-  "publishedAt": "2026-11-10T00:00:00Z",
+  "publishedAt": "2026-11-10T10:00:00Z",
   "apkUrl": "https://github.com/rahatshari/Meter-number/releases/latest/download/Biddut-Bill-latest.apk",
   "latestApkUrl": "https://github.com/rahatshari/Meter-number/releases/latest/download/Biddut-Bill-latest.apk",
   "releasePageUrl": "https://github.com/rahatshari/Meter-number/releases/latest",
   "signatureSha1": "A7:F8:FB:7B:E5:B5:E2:4F:6C:A2:43:CB:F2:E7:6F:D9:C5:0C:AE:62",
-  "notes": "অফলাইন ফার্স্ট ও স্বয়ংক্রিয় ক্লাউড সিঙ্ক, একই সিগনেচার APK এবং ইন-অ্যাপ অটো-আপডেট সংস্করণ।"
+  "notes": "✨ বিদ্যুৎ বিল v2.0.1 রিলিজ নোট ও পরিবর্তনসমূহ:\n• 📱 সরাসরি অ্যাপে লগইন: গুগল ক্রোম ব্রাউজারে না গিয়ে সরাসরি অ্যাপের ভেতর জিমেইল ও পাসওয়ার্ড দিয়ে লগইন\n• 🖼️ অফিশিয়াল স্প্ল্যাশ স্ক্রিন: অ্যাপ খোলার প্রথম মুহূর্তেই বিদ্যুৎ বিলের আসল লোগো সহ চমৎকার অ্যানিমেশন\n• 👤 প্রোফাইল ছবি সমস্যার সমাধান: গুগল রেফারার পলিসি ফিক্স ও সুন্দর মনোগ্রাম অবতার ফলব্যাক\n• ☁️ অফলাইন ফার্স্ট ও অটো-আপলোড: ইন্টারনেট ছাড়াও সব কাজ সচল এবং নেট পেলে ক্লাউডে স্বয়ংক্রিয় ব্যাকআপ\n• 🔒 একই সিগনেচার (Same Signature): কোনো ডেটা না মুছে সরাসরি এক ক্লিকে ইন-অ্যাপ APK আপডেট"
 }

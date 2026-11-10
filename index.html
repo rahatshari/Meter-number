@@ -26,6 +26,84 @@
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
+    <!-- App Startup Splash Screen with official logo -->
+    <div id="app-splash-screen" style="
+        position: fixed;
+        inset: 0;
+        z-index: 99999;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justifyContent: center;
+        background-color: #FFFFFF;
+        font-family: 'Noto Sans Bengali', system-ui, -apple-system, sans-serif;
+        transition: opacity 0.3s ease, visibility 0.3s ease;
+    ">
+        <div style="
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            animation: appSplashPulse 1.8s ease-in-out infinite;
+        ">
+            <div style="
+                width: 92px;
+                height: 92px;
+                border-radius: 24px;
+                background: #FFFFFF;
+                border: 1px solid rgba(0,0,0,0.06);
+                box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+                display: flex;
+                align-items: center;
+                justifyContent: center;
+                margin-bottom: 14px;
+                overflow: hidden;
+            ">
+                <img src="./icon.png" alt="বিদ্যুৎ বিল" style="width: 76px; height: 76px; object-fit: contain;">
+            </div>
+            <h1 style="
+                margin: 0;
+                font-size: 22px;
+                font-weight: 700;
+                color: #1E293B;
+                letter-spacing: -0.3px;
+            ">বিদ্যুৎ বিল</h1>
+            <p style="
+                margin: 4px 0 0;
+                font-size: 13px;
+                color: #64748B;
+                font-weight: 500;
+            ">স্বয়ংক্রিয় অফলাইন ও ক্লাউড সিস্টেম</p>
+        </div>
+        <div style="
+            position: absolute;
+            bottom: 36px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: #94A3B8;
+        ">
+            <div style="
+                width: 14px;
+                height: 14px;
+                border: 2px solid #E2E8F0;
+                border-top-color: #4F46E5;
+                border-radius: 50%;
+                animation: appSplashSpin 0.75s linear infinite;
+            "></div>
+            <span>অ্যাপ চালু হচ্ছে...</span>
+        </div>
+    </div>
+    <style>
+        @keyframes appSplashPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.03); }
+        }
+        @keyframes appSplashSpin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+
     <div id="root"></div>
     <script type="module" src="./src/main.tsx"></script>
     <script>

@@ -1,5 +1,6 @@
 import React from 'react';
 import { User } from 'firebase/auth';
+import { UserAvatar } from './UserAvatar';
 
 interface AccountModalProps {
   isOpen: boolean;
@@ -24,32 +25,8 @@ export const AccountModal: React.FC<AccountModalProps> = ({
         <div className="md3-drag-handle" />
 
         <div style={{ textAlign: 'center', marginBottom: '16px' }}>
-          <div
-            style={{
-              width: '64px',
-              height: '64px',
-              borderRadius: '50%',
-              backgroundColor: 'var(--md-sys-color-primary-container)',
-              color: 'var(--md-sys-color-primary)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '26px',
-              fontWeight: 700,
-              margin: '0 auto 10px',
-              overflow: 'hidden',
-              border: '2px solid var(--md-sys-color-primary)',
-            }}
-          >
-            {currentUser.photoURL ? (
-              <img
-                src={currentUser.photoURL}
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                alt="User"
-              />
-            ) : (
-              (currentUser.displayName || currentUser.email || 'U').charAt(0).toUpperCase()
-            )}
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '10px' }}>
+            <UserAvatar user={currentUser} size={68} />
           </div>
 
           <h3 style={{ margin: '0 0 4px', fontSize: '18px', fontWeight: 700, color: 'var(--md-sys-color-on-surface)' }}>

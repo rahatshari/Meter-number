@@ -2,6 +2,7 @@ import React from 'react';
 import { User } from 'firebase/auth';
 import { ThemeMode } from '../types';
 import { toBengaliNum } from '../utils/bengali';
+import { UserAvatar } from './UserAvatar';
 
 interface TopAppBarProps {
   currentUser: User | null;
@@ -206,38 +207,13 @@ export const TopAppBar: React.FC<TopAppBarProps> = ({
 
         <button
           type="button"
-          className="md3-icon-btn md3-tonal-icon-btn relative overflow-hidden"
+          className="md3-icon-btn md3-tonal-icon-btn p-0"
           onClick={onOpenAccount}
           title="অ্যাকাউন্ট ও ব্যাকআপ"
           aria-label="অ্যাকাউন্ট"
+          style={{ width: '38px', height: '38px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
         >
-          {currentUser?.photoURL ? (
-            <img
-              src={currentUser.photoURL}
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-              alt="User"
-            />
-          ) : (
-            <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--md-sys-color-primary)' }}>
-              {currentUser
-                ? (currentUser.displayName || currentUser.email || 'U').charAt(0).toUpperCase()
-                : '👤'}
-            </span>
-          )}
-          {currentUser && (
-            <span
-              style={{
-                position: 'absolute',
-                top: '3px',
-                right: '3px',
-                width: '8px',
-                height: '8px',
-                borderRadius: '50%',
-                backgroundColor: 'var(--md-sys-color-success)',
-                border: '1.5px solid var(--md-sys-color-surface)',
-              }}
-            />
-          )}
+          <UserAvatar user={currentUser} size={34} showStatusDot={true} />
         </button>
       </div>
     </header>

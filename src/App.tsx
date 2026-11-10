@@ -729,13 +729,15 @@ export const App: React.FC = () => {
       latestVersionCode: nextCode,
       hasUpdate: true,
       releaseNotes:
-        `✨ নতুন সংস্করণ v${simulatedVersion} (বিল্ড #${nextCode}) উপলব্ধ!\n` +
-        `• ইন্টারনেট ছাড়াই সম্পূর্ণ অফলাইন সাপোর্ট ও অটো-আপলোড\n` +
-        `• একই সিগনেচার (Same Signature) APK আপডেট সুবিধা\n` +
-        `• উন্নত গতি ও মেটেরিয়াল ৩ ইউজার ইন্টারফেস`,
+        `✨ বিদ্যুৎ বিল v${simulatedVersion} (বিল্ড #${nextCode}) রিলিজ নোট:\n` +
+        `• 📱 সরাসরি অ্যাপে লগইন: গুগল ক্রোমে রিডাইরেক্ট না হয়ে অ্যাপের ভেতর সরাসরি জিমেইল দিয়ে লগইন সুবিধা\n` +
+        `• 🖼️ অফিসিয়াল স্প্ল্যাশ স্ক্রিন: অ্যাপ চালুর সময় বিদ্যুৎ বিলের আসল লোগো সহ অ্যানিমেশন\n` +
+        `• 👤 প্রোফাইল ছবি ও অবতার: গুগল রেফারার পলিসি ফিক্স ও আকর্ষণীয় মনোগ্রাম অবতার ফলব্যাক\n` +
+        `• ☁️ অফলাইন ও ক্লাউড অটো-সিঙ্ক: ইন্টারনেট ছাড়াই সচল এবং সংযোগ পেলেই ক্লাউডে স্বয়ংক্রিয় ব্যাকআপ\n` +
+        `• 🔒 একই সিগনেচার (Same Signature): কোনো ডেটা না হারিয়ে সরাসরি ইন-অ্যাপ এক ক্লিকে আপডেট`,
     }));
     setIsUpdateModalOpen(true);
-    showToast(`🔔 নতুন আপডেট v${toBengaliNum(simulatedVersion)} নোটিফিকেশন সক্রিয় হয়েছে!`);
+    showToast(`🔔 নতুন আপডেট v${toBengaliNum(simulatedVersion)} নোটিফিকেশন ও রিলিজ নোট সক্রিয় হয়েছে!`);
   };
 
   // Auth methods
@@ -743,16 +745,17 @@ export const App: React.FC = () => {
     try {
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
-      showToast('Google লগইন উইন্ডো খোলা হচ্ছে...');
+      showToast('গুগল লগইন উইন্ডো খোলা হচ্ছে...');
       await signInWithPopup(auth, provider);
-      showToast('Google লগইন সফল হয়েছে!');
+      showToast('✓ আপনার Gmail দিয়ে সফলভাবে লগইন হয়েছে!');
     } catch (error: any) {
       console.error('Google Sign-In Error:', error);
       if (error?.code === 'auth/popup-closed-by-user') {
         showToast('লগইন উইন্ডো বন্ধ করা হয়েছে');
       } else {
-        showToast('লগইন ব্যর্থ হয়েছে: ' + (error?.message || ''));
+        showToast('লগইন সম্পন্ন হয়নি: ' + (error?.message || 'আবার চেষ্টা করুন'));
       }
+      throw error;
     }
   };
 

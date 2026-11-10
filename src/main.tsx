@@ -8,3 +8,15 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <App />
   </React.StrictMode>
 );
+
+// Smoothly dismiss startup splash screen
+setTimeout(() => {
+  const splash = document.getElementById('app-splash-screen');
+  if (splash) {
+    splash.style.opacity = '0';
+    splash.style.pointerEvents = 'none';
+    setTimeout(() => {
+      splash.remove();
+    }, 350);
+  }
+}, 50);

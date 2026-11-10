@@ -62,61 +62,93 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             borderRadius: 'var(--md-shape-corner-md)',
             padding: '12px 14px',
             marginBottom: '14px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '10px',
             boxShadow: 'var(--md-elevation-1)',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
-            <img
-              src="./icon.png"
-              alt="APK"
-              style={{
-                width: '34px',
-                height: '34px',
-                borderRadius: '8px',
-                backgroundColor: '#FFFFFF',
-                padding: '2px',
-                flexShrink: 0,
-              }}
-            />
-            <div style={{ minWidth: 0 }}>
-              <div
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '10px',
+              marginBottom: '8px',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+              <img
+                src="./icon.png"
+                alt="APK"
                 style={{
-                  fontSize: '13px',
-                  fontWeight: 700,
-                  color: 'var(--md-sys-color-on-primary-container)',
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '10px',
+                  backgroundColor: '#FFFFFF',
+                  padding: '2px',
+                  flexShrink: 0,
+                  boxShadow: 'var(--md-elevation-1)',
                 }}
-              >
-                🎉 নতুন আপডেট (v{toBengaliNum(updateInfo.latestVersion)}) এসেছে!
-              </div>
-              <div
-                style={{
-                  fontSize: '11.5px',
-                  color: 'var(--md-sys-color-on-primary-container)',
-                  opacity: 0.9,
-                }}
-              >
-                অ্যাপের ভেতর থেকেই সরাসরি ডাউনলোড ও আপডেট করুন
+              />
+              <div style={{ minWidth: 0 }}>
+                <div
+                  style={{
+                    fontSize: '13.5px',
+                    fontWeight: 700,
+                    color: 'var(--md-sys-color-on-primary-container)',
+                  }}
+                >
+                  🎉 নতুন সংস্করণ v{toBengaliNum(updateInfo.latestVersion)} প্রকাশিত হয়েছে!
+                </div>
+                <div
+                  style={{
+                    fontSize: '11px',
+                    color: 'var(--md-sys-color-on-primary-container)',
+                    opacity: 0.85,
+                  }}
+                >
+                  Same Signature · কোনো ডেটা না হারিয়ে সরাসরি আপডেট
+                </div>
               </div>
             </div>
+            <button
+              type="button"
+              className="md3-btn-filled"
+              style={{
+                width: 'auto',
+                padding: '6px 12px',
+                fontSize: '11.5px',
+                whiteSpace: 'nowrap',
+                flexShrink: 0,
+              }}
+              onClick={onOpenUpdateModal}
+            >
+              এখনই আপডেট
+            </button>
           </div>
-          <button
-            type="button"
-            className="md3-btn-filled"
-            style={{
-              width: 'auto',
-              padding: '7px 14px',
-              fontSize: '12px',
-              whiteSpace: 'nowrap',
-              flexShrink: 0,
-            }}
+
+          {/* Quick Changelog Preview */}
+          <div
             onClick={onOpenUpdateModal}
+            style={{
+              cursor: 'pointer',
+              backgroundColor: 'rgba(255, 255, 255, 0.45)',
+              padding: '6px 10px',
+              borderRadius: '8px',
+              fontSize: '11px',
+              color: 'var(--md-sys-color-on-primary-container)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '6px',
+            }}
+            title="সম্পূর্ণ রিলিজ নোট দেখুন"
           >
-            আপডেট করুন
-          </button>
+            <div className="truncate">
+              📋 <strong>পরিবর্তন:</strong> {updateInfo.releaseNotes.replace(/\n+/g, ' · ').slice(0, 95)}...
+            </div>
+            <span style={{ fontWeight: 700, textDecoration: 'underline', flexShrink: 0 }}>
+              বিস্তারিত →
+            </span>
+          </div>
         </div>
       )}
 
