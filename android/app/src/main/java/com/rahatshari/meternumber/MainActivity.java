@@ -1,19 +1,17 @@
 package com.rahatshari.meternumber;
 
-import android.app.Dialog;
+import android.accounts.AccountManager;
+import android.app.Activity;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Message;
-import android.view.ViewGroup;
 import android.webkit.CookieManager;
 import android.webkit.DownloadListener;
 import android.webkit.JavascriptInterface;
-import android.webkit.WebChromeClient;
-import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
-import android.webkit.WebViewClient;
 import androidx.core.content.FileProvider;
 import com.getcapacitor.BridgeActivity;
 import com.getcapacitor.BridgeWebChromeClient;
@@ -24,6 +22,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 
 public class MainActivity extends BridgeActivity {
+    private static final int RC_PICK_GOOGLE_ACCOUNT = 9001;
     private WebView appWebView;
 
     @Override
@@ -51,8 +50,10 @@ public class MainActivity extends BridgeActivity {
                 cookieManager.setAcceptCookie(true);
                 cookieManager.setAcceptThirdPartyCookies(webView, true);
 
-                // Register Native In-App APK Downloader & Package Installer Bridge
-                webView.addJavascriptInterface(new AndroidApkUpdater(), "AndroidApkUpdater");
+                // Register Native In-App APK Downloader, Package Installer & Native Google Account Picker Bridge
+                AndroidApkUpdater nativeBridge = new AndroidApkUpdater();
+                webView.addJavascriptInterface(nativeBridge, "AndroidApkUpdater");
+                webView.addJavascriptInterface(nativeBridge, "AndroidNativeAuth");
 
                 // Also intercept any direct .apk download links inside WebView
                 webView.setDownloadListener(new DownloadListener() {
@@ -72,60 +73,103 @@ public class MainActivity extends BridgeActivity {
                 webView.setWebChromeClient(new BridgeWebChromeClient(getBridge()) {
                     @Override
                     public boolean onCreateWindow(WebView view, boolean isDialog, boolean isUserGesture, Message resultMsg) {
-                        final Dialog oauthDialog = new Dialog(MainActivity.this, android.R.style.Theme_DeviceDefault_Light_NoActionBar);
-                        final WebView popupWebView = new WebView(MainActivity.this);
-
-                        WebSettings popupSettings = popupWebView.getSettings();
-                        popupSettings.setJavaScriptEnabled(true);
-                        popupSettings.setDomStorageEnabled(true);
-                        popupSettings.setDatabaseEnabled(true);
-                        popupSettings.setSupportMultipleWindows(true);
-                        popupSettings.setJavaScriptCanOpenWindowsAutomatically(true);
-
-                        String popupUa = popupSettings.getUserAgentString();
-                        if (popupUa != null) {
-                            popupSettings.setUserAgentString(popupUa.replace("; wv", "").replace("Version/4.0 ", ""));
-                        }
-
-                        CookieManager cm = CookieManager.getInstance();
-                        cm.setAcceptCookie(true);
-                        cm.setAcceptThirdPartyCookies(popupWebView, true);
-
-                        popupWebView.setWebViewClient(new WebViewClient() {
-                            @Override
-                            public boolean shouldOverrideUrlLoading(WebView v, WebResourceRequest request) {
-                                return false;
-                            }
-                        });
-
-                        popupWebView.setWebChromeClient(new WebChromeClient() {
-                            @Override
-                            public void onCloseWindow(WebView window) {
-                                try {
-                                    oauthDialog.dismiss();
-                                } catch (Exception ignored) {}
-                            }
-                        });
-
-                        oauthDialog.setContentView(popupWebView, new ViewGroup.LayoutParams(
-                            ViewGroup.LayoutParams.MATCH_PARENT,
-                            ViewGroup.LayoutParams.MATCH_PARENT
-                        ));
-                        oauthDialog.setOnDismissListener(d -> {
-                            try {
-                                popupWebView.destroy();
-                            } catch (Exception ignored) {}
-                        });
-                        oauthDialog.show();
-
-                        WebView.WebViewTransport transport = (WebView.WebViewTransport) resultMsg.obj;
-                        transport.setWebView(popupWebView);
-                        resultMsg.sendToTarget();
-                        return true;
+                        // Never open the isolated WebView OAuth login form on Android;
+                        // always launch the phone's Native Android Google Account Picker instead.
+                        startNativeGoogleAccountPicker();
+                        return false;
                     }
                 });
             }
         } catch (Exception ignored) {}
+    }
+
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == RC_PICK_GOOGLE_ACCOUNT) {
+            if (resultCode == Activity.RESULT_OK && data != null) {
+                String email = data.getStringExtra(AccountManager.KEY_ACCOUNT_NAME);
+                if (email != null && !email.trim().isEmpty()) {
+                    notifyJsGoogleAccountPicked(email.trim());
+                } else {
+                    notifyJsGoogleAccountCancelled();
+                }
+            } else {
+                notifyJsGoogleAccountCancelled();
+            }
+            return;
+        }
+        super.onActivityResult(requestCode, resultCode, data);
+    }
+
+    private void startNativeGoogleAccountPicker() {
+        runOnUiThread(() -> {
+            try {
+                Intent intent;
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    intent = AccountManager.newChooseAccountIntent(
+                        null,
+                        null,
+                        new String[]{"com.google"},
+                        null,
+                        null,
+                        null,
+                        null
+                    );
+                } else {
+                    intent = AccountManager.newChooseAccountIntent(
+                        null,
+                        null,
+                        new String[]{"com.google"},
+                        false,
+                        null,
+                        null,
+                        null,
+                        null
+                    );
+                }
+                startActivityForResult(intent, RC_PICK_GOOGLE_ACCOUNT);
+            } catch (Exception e) {
+                notifyJsGoogleAccountError(e.getMessage());
+            }
+        });
+    }
+
+    private void notifyJsGoogleAccountPicked(final String email) {
+        if (appWebView == null) return;
+        final String safeEmail = email == null ? "" : email.replace("'", "\\'").replace("\n", "").trim();
+        appWebView.post(() -> {
+            try {
+                appWebView.evaluateJavascript(
+                    "if(window.__onNativeGoogleAccountPicked){window.__onNativeGoogleAccountPicked('" + safeEmail + "');}",
+                    null
+                );
+            } catch (Exception ignored) {}
+        });
+    }
+
+    private void notifyJsGoogleAccountCancelled() {
+        if (appWebView == null) return;
+        appWebView.post(() -> {
+            try {
+                appWebView.evaluateJavascript(
+                    "if(window.__onNativeGoogleAccountCancelled){window.__onNativeGoogleAccountCancelled();}",
+                    null
+                );
+            } catch (Exception ignored) {}
+        });
+    }
+
+    private void notifyJsGoogleAccountError(final String errorMsg) {
+        if (appWebView == null) return;
+        final String safeErr = errorMsg == null ? "" : errorMsg.replace("'", "\\'").replace("\n", " ");
+        appWebView.post(() -> {
+            try {
+                appWebView.evaluateJavascript(
+                    "if(window.__onNativeGoogleAccountError){window.__onNativeGoogleAccountError('" + safeErr + "');}",
+                    null
+                );
+            } catch (Exception ignored) {}
+        });
     }
 
     private void notifyJsProgress(final int percent, final String status, final String errorMsg) {
@@ -241,6 +285,11 @@ public class MainActivity extends BridgeActivity {
         @JavascriptInterface
         public boolean isNativeApk() {
             return true;
+        }
+
+        @JavascriptInterface
+        public void pickGoogleAccount() {
+            startNativeGoogleAccountPicker();
         }
 
         @JavascriptInterface

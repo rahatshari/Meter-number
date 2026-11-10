@@ -15,12 +15,20 @@ declare global {
     AndroidApkUpdater?: {
       isNativeApk?: () => boolean;
       downloadAndInstall?: (apkUrl: string) => void;
+      pickGoogleAccount?: () => void;
+    };
+    AndroidNativeAuth?: {
+      isNativeApk?: () => boolean;
+      pickGoogleAccount?: () => void;
     };
     __onApkDownloadProgress?: (
       percent: number,
       status: 'downloading' | 'installing' | 'done' | 'error',
       errorMsg?: string
     ) => void;
+    __onNativeGoogleAccountPicked?: (email: string) => void;
+    __onNativeGoogleAccountCancelled?: () => void;
+    __onNativeGoogleAccountError?: (errorMsg: string) => void;
   }
 }
 

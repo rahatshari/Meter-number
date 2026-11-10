@@ -124,6 +124,75 @@ export interface LoginResult {
 }
 
 /**
+ * Returns true if running inside the installed Android APK with Native Android Google Account Picker support.
+ */
+export function hasNativeAndroidGooglePicker(): boolean {
+  if (typeof window === 'undefined') return false;
+  return (
+    typeof window.AndroidApkUpdater?.pickGoogleAccount === 'function' ||
+    typeof window.AndroidNativeAuth?.pickGoogleAccount === 'function'
+  );
+}
+
+/**
+ * Opens the Native Android OS Google Account Picker dialog (AccountManager.newChooseAccountIntent)
+ * showing all Gmail ("com.google") accounts signed into the user's phone, and resolves with the selected Gmail.
+ */
+export function pickNativeAndroidGoogleAccount(): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const pickerFn =
+      window.AndroidApkUpdater?.pickGoogleAccount?.bind(window.AndroidApkUpdater) ||
+      window.AndroidNativeAuth?.pickGoogleAccount?.bind(window.AndroidNativeAuth);
+
+    if (!pickerFn) {
+      const err = new Error('Native Google Account Picker not available');
+      (err as any).code = 'auth/native-picker-unavailable';
+      reject(err);
+      return;
+    }
+
+    const cleanup = () => {
+      delete window.__onNativeGoogleAccountPicked;
+      delete window.__onNativeGoogleAccountCancelled;
+      delete window.__onNativeGoogleAccountError;
+    };
+
+    window.__onNativeGoogleAccountPicked = (email: string) => {
+      cleanup();
+      const clean = normalizeGmailInput(email).replace(/\+biddut(\d*)@/i, '@');
+      if (clean && clean.includes('@')) {
+        resolve(clean);
+      } else {
+        const err = new Error('সঠিক Gmail অ্যাকাউন্ট পাওয়া যায়নি');
+        (err as any).code = 'auth/invalid-email';
+        reject(err);
+      }
+    };
+
+    window.__onNativeGoogleAccountCancelled = () => {
+      cleanup();
+      const err = new Error('লগইন উইন্ডো বন্ধ করা হয়েছে');
+      (err as any).code = 'auth/popup-closed-by-user';
+      reject(err);
+    };
+
+    window.__onNativeGoogleAccountError = (errorMsg: string) => {
+      cleanup();
+      const err = new Error(errorMsg || 'Google Account Picker চালু করা যায়নি');
+      (err as any).code = 'auth/native-picker-error';
+      reject(err);
+    };
+
+    try {
+      pickerFn();
+    } catch (e: any) {
+      cleanup();
+      reject(e);
+    }
+  });
+}
+
+/**
  * Method 2A: Standard Email & Password Sign-In (checks primary email and "+biddut" alias if previously linked).
  */
 export async function signInWithStandardEmailPassword(

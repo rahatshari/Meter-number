@@ -49,6 +49,8 @@ import {
   recordSavedGmailAccount,
   signInWithStandardEmailPassword,
   registerWithStandardEmailPassword,
+  hasNativeAndroidGooglePicker,
+  pickNativeAndroidGoogleAccount,
 } from './utils/authHelpers';
 
 import { TopAppBar } from './components/TopAppBar';
@@ -766,6 +768,17 @@ export const App: React.FC = () => {
   // Auth methods
   const handleGoogleLogin = async () => {
     try {
+      // 1. Inside the installed Android APK: open the phone's Native Android OS Google Account Picker
+      //    so the user can select any Gmail account already logged into their phone in 1 tap!
+      if (hasNativeAndroidGooglePicker()) {
+        const pickedEmail = await pickNativeAndroidGoogleAccount();
+        showToast(`⏳ ${pickedEmail} দিয়ে লগইন হচ্ছে...`);
+        const res = await loginWithJustEmail(auth, pickedEmail);
+        showToast(`✓ ${res.resolvedEmail} দিয়ে সফলভাবে লগইন হয়েছে!`);
+        return;
+      }
+
+      // 2. Desktop / Mobile Web Browser: Firebase Google OAuth Popup
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
       const res = await signInWithPopup(auth, provider);

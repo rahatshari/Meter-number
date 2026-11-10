@@ -140,3 +140,30 @@ test('cleanChangelogItems removes signature, SHA1, and markdown headers leaving 
   assert.equal(isAutoUpdateEnabled(), true);
 });
 
+test('pickNativeAndroidGoogleAccount resolves with the phone Gmail picked via native Android AccountManager', async () => {
+  const { hasNativeAndroidGooglePicker, pickNativeAndroidGoogleAccount } = await import(
+    './authHelpers'
+  );
+
+  // Mock global window with AndroidApkUpdater.pickGoogleAccount
+  const g = globalThis as any;
+  g.window = g.window || {};
+  g.window.AndroidApkUpdater = {
+    isNativeApk: () => true,
+    pickGoogleAccount: () => {
+      setTimeout(() => {
+        if (g.window.__onNativeGoogleAccountPicked) {
+          g.window.__onNativeGoogleAccountPicked('phone.user@gmail.com');
+        }
+      }, 5);
+    },
+  };
+
+  assert.equal(hasNativeAndroidGooglePicker(), true);
+  const picked = await pickNativeAndroidGoogleAccount();
+  assert.equal(picked, 'phone.user@gmail.com');
+
+  delete g.window.AndroidApkUpdater;
+});
+
+
