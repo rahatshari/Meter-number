@@ -2,7 +2,7 @@ import React from 'react';
 import { Customer } from '../types';
 import { toBengaliNum, isCustomerPaidThisMonth, toEnglishNum } from '../utils/bengali';
 import { CustomerCard } from './CustomerCard';
-import { AppUpdateInfo } from '../utils/appUpdater';
+import { AppUpdateInfo, cleanChangelogItems } from '../utils/appUpdater';
 
 interface DashboardViewProps {
   customers: Customer[];
@@ -50,6 +50,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   // Recent 3 customers preview
   const recentCustomers = customers.slice(0, 3);
+  const cleanChanges = cleanChangelogItems(updateInfo.releaseNotes);
 
   return (
     <div style={{ paddingBottom: '96px' }}>
@@ -105,7 +106,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     opacity: 0.85,
                   }}
                 >
-                  Same Signature · কোনো ডেটা না হারিয়ে সরাসরি আপডেট
+                  কোনো ডেটা না হারিয়ে সরাসরি অ্যাপের ভেতর আপডেট করুন
                 </div>
               </div>
             </div>
@@ -140,13 +141,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               justifyContent: 'space-between',
               gap: '6px',
             }}
-            title="সম্পূর্ণ রিলিজ নোট দেখুন"
+            title="পরিবর্তনসমূহ দেখুন"
           >
             <div className="truncate">
-              📋 <strong>পরিবর্তন:</strong> {updateInfo.releaseNotes.replace(/\n+/g, ' · ').slice(0, 95)}...
+              📋 <strong>পরিবর্তনসমূহ:</strong>{' '}
+              {(cleanChanges.length > 0 ? cleanChanges.join(' · ') : updateInfo.releaseNotes).slice(
+                0,
+                95
+              )}
+              ...
             </div>
             <span style={{ fontWeight: 700, textDecoration: 'underline', flexShrink: 0 }}>
-              বিস্তারিত →
+              দেখুন →
             </span>
           </div>
         </div>

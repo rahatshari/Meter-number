@@ -37,13 +37,16 @@ import {
 import {
   APP_VERSION,
   APP_VERSION_CODE,
-  APK_SIGNATURE_SHA1,
   DEFAULT_APK_DOWNLOAD_URL,
   DEFAULT_RELEASE_PAGE_URL,
   AppUpdateInfo,
   checkForAppUpdate,
+  isAutoUpdateEnabled,
+  setAutoUpdateEnabled,
+  isNativeAndroidApk,
+  triggerApkUpdateDownload,
 } from './utils/appUpdater';
-import { loginWithJustEmail } from './utils/authHelpers';
+import { loginWithJustEmail, recordSavedGmailAccount } from './utils/authHelpers';
 
 import { TopAppBar } from './components/TopAppBar';
 import { BottomNavBar } from './components/BottomNavBar';
@@ -96,6 +99,9 @@ export const App: React.FC = () => {
   const isFlushingRef = useRef<boolean>(false);
 
   // App Version & In-App APK Auto-Update State
+  const [autoUpdateEnabled, setAutoUpdateEnabledState] = useState<boolean>(() =>
+    isAutoUpdateEnabled()
+  );
   const [updateInfo, setUpdateInfo] = useState<AppUpdateInfo>({
     currentVersion: APP_VERSION,
     currentVersionCode: APP_VERSION_CODE,
@@ -105,9 +111,8 @@ export const App: React.FC = () => {
     apkDownloadUrl: DEFAULT_APK_DOWNLOAD_URL,
     releasePageUrl: DEFAULT_RELEASE_PAGE_URL,
     releaseNotes:
-      'অফলাইন ফার্স্ট ও স্বয়ংক্রিয় ক্লাউড সিঙ্ক, একই সিগনেচার APK এবং ইন-অ্যাপ অটো-আপডেট সংস্করণ।',
+      '• যেকোনো Gmail দিয়ে সরাসরি লগইন ও ক্লাউড অটো-সিঙ্ক\n• অ্যাপের ভেতর থেকে সরাসরি অটো-আপডেট চালু বা বন্ধ করার সুবিধা\n• অফলাইন ও অনলাইন ব্যাকআপ উন্নয়ন',
     publishedAt: new Date().toISOString(),
-    signatureSha1: APK_SIGNATURE_SHA1,
   });
   const [isCheckingUpdate, setIsCheckingUpdate] = useState<boolean>(false);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState<boolean>(false);
@@ -359,7 +364,20 @@ export const App: React.FC = () => {
     }
   }, [isOnline, currentUser, pendingQueue.length, flushOfflineQueue]);
 
-  // Automatic In-App APK Update Check (runs on launch and when coming back online)
+  const handleToggleAutoUpdate = useCallback(
+    (enabled: boolean) => {
+      setAutoUpdateEnabled(enabled);
+      setAutoUpdateEnabledState(enabled);
+      showToast(
+        enabled
+          ? '✓ অটো-আপডেট চালু করা হয়েছে'
+          : '📴 অটো-আপডেট বন্ধ করা হয়েছে'
+      );
+    },
+    [showToast]
+  );
+
+  // Automatic In-App APK Update Check (runs on launch when autoUpdateEnabled is true)
   const handleCheckForUpdate = useCallback(
     async (silent: boolean = false) => {
       if (typeof navigator !== 'undefined' && !navigator.onLine) {
@@ -376,6 +394,9 @@ export const App: React.FC = () => {
         if (info.hasUpdate) {
           showToast(`🎉 অ্যাপের নতুন আপডেট (v${toBengaliNum(info.latestVersion)}) এসেছে!`);
           setIsUpdateModalOpen(true);
+          if (silent && isAutoUpdateEnabled() && isNativeAndroidApk()) {
+            triggerApkUpdateDownload(info.apkDownloadUrl);
+          }
         } else if (!silent) {
           showToast(`✓ আপনার অ্যাপটি সর্বশেষ ভার্সনে (v${toBengaliNum(info.currentVersion)}) আছে!`);
         }
@@ -387,10 +408,10 @@ export const App: React.FC = () => {
   );
 
   useEffect(() => {
-    if (isOnline) {
+    if (isOnline && autoUpdateEnabled) {
       handleCheckForUpdate(true);
     }
-  }, [isOnline, handleCheckForUpdate]);
+  }, [isOnline, autoUpdateEnabled, handleCheckForUpdate]);
 
   // Auth observer and Firestore listener with Offline Queue Reconciliation
   useEffect(() => {
@@ -730,15 +751,13 @@ export const App: React.FC = () => {
       latestVersionCode: nextCode,
       hasUpdate: true,
       releaseNotes:
-        `✨ বিদ্যুৎ বিল v${simulatedVersion} (বিল্ড #${nextCode}) রিলিজ নোট:\n` +
-        `• 📱 সরাসরি অ্যাপে লগইন: গুগল ক্রোমে রিডাইরেক্ট না হয়ে অ্যাপের ভেতর সরাসরি জিমেইল দিয়ে লগইন সুবিধা\n` +
-        `• 🖼️ অফিসিয়াল স্প্ল্যাশ স্ক্রিন: অ্যাপ চালুর সময় বিদ্যুৎ বিলের আসল লোগো সহ অ্যানিমেশন\n` +
-        `• 👤 প্রোফাইল ছবি ও অবতার: গুগল রেফারার পলিসি ফিক্স ও আকর্ষণীয় মনোগ্রাম অবতার ফলব্যাক\n` +
-        `• ☁️ অফলাইন ও ক্লাউড অটো-সিঙ্ক: ইন্টারনেট ছাড়াই সচল এবং সংযোগ পেলেই ক্লাউডে স্বয়ংক্রিয় ব্যাকআপ\n` +
-        `• 🔒 একই সিগনেচার (Same Signature): কোনো ডেটা না হারিয়ে সরাসরি ইন-অ্যাপ এক ক্লিকে আপডেট`,
+        `• ডিফল্ট কোনো Gmail ছাড়াই গ্রাহক বা নিজের যেকোনো Gmail দিয়ে সরাসরি লগইন\n` +
+        `• অ্যাপের ভেতর থেকেই সরাসরি APK ডাউনলোড ও ইনস্টল সুবিধা\n` +
+        `• অটো-আপডেট চালু বা বন্ধ করার নতুন সুইচ সংযোজন\n` +
+        `• অফলাইন ও ফায়ারবেস ক্লাউড অটো-সিঙ্ক পারফরম্যান্স উন্নয়ন`,
     }));
     setIsUpdateModalOpen(true);
-    showToast(`🔔 নতুন আপডেট v${toBengaliNum(simulatedVersion)} নোটিফিকেশন ও রিলিজ নোট সক্রিয় হয়েছে!`);
+    showToast(`🔔 নতুন আপডেট v${toBengaliNum(simulatedVersion)} নোটিফিকেশন সক্রিয় হয়েছে!`);
   };
 
   // Auth methods
@@ -746,18 +765,15 @@ export const App: React.FC = () => {
     try {
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
-      showToast('গুগল অ্যাকাউন্ট নির্বাচন উইন্ডো খোলা হচ্ছে...');
-      await signInWithPopup(auth, provider);
+      const res = await signInWithPopup(auth, provider);
+      if (res.user?.email) {
+        recordSavedGmailAccount(res.user.email);
+      }
       showToast('✓ আপনার Gmail দিয়ে সফলভাবে লগইন হয়েছে!');
     } catch (error: any) {
-      console.error('Google Sign-In Error:', error);
       const code = error?.code || '';
       if (code === 'auth/popup-closed-by-user') {
         showToast('লগইন উইন্ডো বন্ধ করা হয়েছে');
-      } else if (code === 'auth/unauthorized-domain' || String(error?.message).includes('unauthorized domain')) {
-        showToast('⚠️ অথরাইজেশন ফেইলড: Firebase-এ rahatshari.github.io ডোমেন যোগ করতে হবে');
-      } else {
-        showToast('লগইন সম্পন্ন হয়নি: ' + (error?.message || 'আবার চেষ্টা করুন'));
       }
       throw error;
     }
@@ -767,18 +783,12 @@ export const App: React.FC = () => {
     try {
       showToast('Gmail দিয়ে লগইন হচ্ছে...');
       const res = await loginWithJustEmail(auth, email);
-      if (res.isNewUser) {
-        showToast('✓ নতুন অ্যাকাউন্ট প্রস্তুত ও সফলভাবে লগইন হয়েছে!');
-      } else {
-        showToast('✓ আপনার Gmail দিয়ে সফলভাবে লগইন হয়েছে!');
-      }
+      showToast(`✓ ${res.resolvedEmail} দিয়ে সফলভাবে লগইন হয়েছে!`);
     } catch (err: any) {
       console.error('Direct Gmail Login Error:', err);
       let msg = 'লগইন ব্যর্থ হয়েছে: ';
       if (err.code === 'auth/invalid-email') {
         msg = 'সঠিক Gmail ঠিকানা লিখুন';
-      } else if (err.code === 'auth/account-exists-with-different-credential') {
-        msg = 'এই Gmail-টিতে পূর্বে অন্য পাসওয়ার্ড দেওয়া হয়েছিল। নিচের বক্সে পাসওয়ার্ড দিন অথবা রিসেট লিংক পাঠান।';
       } else {
         msg += err.message || '';
       }
@@ -937,6 +947,8 @@ export const App: React.FC = () => {
             isSyncing={isSyncing}
             updateInfo={updateInfo}
             isCheckingUpdate={isCheckingUpdate}
+            autoUpdateEnabled={autoUpdateEnabled}
+            onToggleAutoUpdate={handleToggleAutoUpdate}
             onToggleTheme={toggleTheme}
             onOpenAuthModal={() => {
               setAuthInitialTab('google');
@@ -1033,6 +1045,7 @@ export const App: React.FC = () => {
         onClose={() => setIsAccountModalOpen(false)}
         currentUser={currentUser}
         onSyncAllToCloud={handleSyncAllLocalToCloud}
+        onSwitchAccount={() => setIsAuthModalOpen(true)}
         onLogout={handleLogout}
       />
 
@@ -1042,6 +1055,8 @@ export const App: React.FC = () => {
         onClose={() => setIsUpdateModalOpen(false)}
         updateInfo={updateInfo}
         isChecking={isCheckingUpdate}
+        autoUpdateEnabled={autoUpdateEnabled}
+        onToggleAutoUpdate={handleToggleAutoUpdate}
         onCheckAgain={() => handleCheckForUpdate(false)}
         onShowToast={showToast}
       />

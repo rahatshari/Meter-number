@@ -28,9 +28,9 @@ jobs:
       - name: Calculate Auto-Incremented App Version
         id: version
         run: |
-          RUN_NUM=${{ github.run_number }}
-          VERSION_CODE=$((100 + RUN_NUM))
-          VERSION_NAME="2.0.${RUN_NUM}"
+          COMMIT_COUNT=$(git rev-list --count HEAD 2>/dev/null || echo "${{ github.run_number }}")
+          VERSION_CODE=$((100 + COMMIT_COUNT))
+          VERSION_NAME="2.0.${COMMIT_COUNT}"
           BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           REPO_SLUG="${{ github.repository }}"
           APK_FILENAME="Biddut-Bill-v${VERSION_NAME}.apk"
@@ -63,8 +63,7 @@ jobs:
             "apkUrl": "${LATEST_APK_URL}",
             "latestApkUrl": "https://github.com/${REPO_SLUG}/releases/latest/download/Biddut-Bill-latest.apk",
             "releasePageUrl": "https://github.com/${REPO_SLUG}/releases/tag/v${VERSION_NAME}",
-            "signatureSha1": "A7:F8:FB:7B:E5:B5:E2:4F:6C:A2:43:CB:F2:E7:6F:D9:C5:0C:AE:62",
-            "notes": "✨ নতুন সংস্করণ v${VERSION_NAME} পরিবর্তনসমূহ:\n${COMMIT_NOTES_JSON}\n\n🔒 Same Signature: কোনো পূর্বের ডেটা না হারিয়ে সরাসরি আপডেট হবে।"
+            "notes": "${COMMIT_NOTES_JSON}"
           }
           EOF
           cat public/version.json
@@ -101,7 +100,7 @@ jobs:
           node scripts/setup-android-apk.mjs
           npx cap sync android
 
-      - name: Build Signed Release APK (Same Signature Keystore)
+      - name: Build Signed Release APK
         working-directory: ./android
         env:
           ANDROID_HOME: ${{ env.ANDROID_HOME || '/usr/local/lib/android/sdk' }}
@@ -132,18 +131,7 @@ jobs:
           tag_name: v${{ steps.version.outputs.VERSION_NAME }}
           name: "বিদ্যুৎ বিল APK v${{ steps.version.outputs.VERSION_NAME }}"
           body: |
-            ## ⚡ বিদ্যুৎ বিল — Android APK রিলিজ (v${{ steps.version.outputs.VERSION_NAME }})
-
-            ### 📋 রিলিজ নোট ও পরিবর্তনসমূহ (Changelog):
             ${{ steps.version.outputs.COMMITS }}
-
-            ---
-            - **অটোমেটিক ভার্সন**: `v${{ steps.version.outputs.VERSION_NAME }}` (Version Code: `${{ steps.version.outputs.VERSION_CODE }}`)
-            - **সিগনেচার (Same Signature)**: `SHA1: A7:F8:FB:7B:E5:B5:E2:4F:6C:A2:43:CB:F2:E7:6F:D9:C5:0C:AE:62` (পূর্বের অ্যাপ আনইনস্টল না করেই সরাসরি আপডেট হবে)
-            - **অফলাইন ও অটো-সিঙ্ক**: ইন্টারনেট ছাড়াই সকল কাজ সংরক্ষিত থাকবে এবং ইন্টারনেট পেলে স্বয়ংক্রিয়ভাবে ক্লাউডে আপলোড হবে।
-
-            ### 📥 ডাউনলোড ও আপডেট:
-            নিচের **`${{ steps.version.outputs.APK_FILENAME }}`** অথবা **`Biddut-Bill-latest.apk`** ফাইলে ক্লিক করে ডাউনলোড ও ইনস্টল করুন।
           draft: false
           prerelease: false
           make_latest: true

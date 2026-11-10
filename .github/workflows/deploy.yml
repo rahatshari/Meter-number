@@ -25,6 +25,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -33,12 +35,14 @@ jobs:
 
       - name: Generate Auto-Incremented Version Metadata
         run: |
-          RUN_NUM=${{ github.run_number }}
-          VERSION_CODE=$((100 + RUN_NUM))
-          VERSION_NAME="2.0.${RUN_NUM}"
+          COMMIT_COUNT=$(git rev-list --count HEAD 2>/dev/null || echo "${{ github.run_number }}")
+          VERSION_CODE=$((100 + COMMIT_COUNT))
+          VERSION_NAME="2.0.${COMMIT_COUNT}"
           BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           REPO_SLUG="${{ github.repository }}"
           APK_FILENAME="Biddut-Bill-v${VERSION_NAME}.apk"
+          COMMITS=$(git log -n 5 --no-merges --pretty=format:"• %s" || echo "• পারফরম্যান্স ও স্থায়িত্ব বৃদ্ধি")
+          COMMIT_NOTES_JSON=$(echo "$COMMITS" | sed ':a;N;$!ba;s/\n/\\n/g' | sed 's/"/\\"/g')
           cat > public/version.json <<EOF
           {
             "version": "${VERSION_NAME}",
@@ -48,8 +52,7 @@ jobs:
             "apkUrl": "https://github.com/${REPO_SLUG}/releases/download/v${VERSION_NAME}/${APK_FILENAME}",
             "latestApkUrl": "https://github.com/${REPO_SLUG}/releases/latest/download/Biddut-Bill-latest.apk",
             "releasePageUrl": "https://github.com/${REPO_SLUG}/releases/tag/v${VERSION_NAME}",
-            "signatureSha1": "A7:F8:FB:7B:E5:B5:E2:4F:6C:A2:43:CB:F2:E7:6F:D9:C5:0C:AE:62",
-            "notes": "স্বয়ংক্রিয় বিল্ড v${VERSION_NAME} — অফলাইন অটো-সিঙ্ক, একই সিগনেচার আপডেট এবং উন্নত পারফরম্যান্স।"
+            "notes": "${COMMIT_NOTES_JSON}"
           }
           EOF
           echo "VITE_APP_VERSION=${VERSION_NAME}" >> $GITHUB_ENV

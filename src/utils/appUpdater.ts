@@ -8,7 +8,20 @@ export interface AppUpdateInfo {
   releasePageUrl: string;
   releaseNotes: string;
   publishedAt: string;
-  signatureSha1: string;
+}
+
+declare global {
+  interface Window {
+    AndroidApkUpdater?: {
+      isNativeApk?: () => boolean;
+      downloadAndInstall?: (apkUrl: string) => void;
+    };
+    __onApkDownloadProgress?: (
+      percent: number,
+      status: 'downloading' | 'installing' | 'done' | 'error',
+      errorMsg?: string
+    ) => void;
+  }
 }
 
 const envMeta = (import.meta as unknown as { env?: Record<string, string | undefined> }).env || {};
@@ -16,10 +29,49 @@ const envMeta = (import.meta as unknown as { env?: Record<string, string | undef
 export const APP_VERSION: string = envMeta.VITE_APP_VERSION || '2.0.1';
 export const APP_VERSION_CODE: number = Number(envMeta.VITE_APP_VERSION_CODE || 101);
 export const GITHUB_REPO: string = envMeta.VITE_GITHUB_REPO || 'rahatshari/Meter-number';
-export const APK_SIGNATURE_SHA1 = 'A7:F8:FB:7B:E5:B5:E2:4F:6C:A2:43:CB:F2:E7:6F:D9:C5:0C:AE:62';
 
 export const DEFAULT_APK_DOWNLOAD_URL = `https://github.com/${GITHUB_REPO}/releases/latest/download/Biddut-Bill-latest.apk`;
 export const DEFAULT_RELEASE_PAGE_URL = `https://github.com/${GITHUB_REPO}/releases/latest`;
+
+const AUTO_UPDATE_STORAGE_KEY = 'biddut_bill_auto_update_enabled';
+
+/**
+ * Checks whether automatic update checking & prompting is enabled.
+ * Defaults to true so users get updates automatically unless they turn it off.
+ */
+export function isAutoUpdateEnabled(): boolean {
+  if (typeof localStorage === 'undefined') return true;
+  try {
+    const val = localStorage.getItem(AUTO_UPDATE_STORAGE_KEY);
+    if (val === null) return true;
+    return val === 'true';
+  } catch {
+    return true;
+  }
+}
+
+/**
+ * Enables or disables automatic updates.
+ */
+export function setAutoUpdateEnabled(enabled: boolean): void {
+  if (typeof localStorage === 'undefined') return;
+  try {
+    localStorage.setItem(AUTO_UPDATE_STORAGE_KEY, enabled ? 'true' : 'false');
+  } catch {
+    // ignore storage write error
+  }
+}
+
+/**
+ * Returns true if running inside the installed Android APK with native updater support.
+ */
+export function isNativeAndroidApk(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    Boolean(window.AndroidApkUpdater) &&
+    typeof window.AndroidApkUpdater?.downloadAndInstall === 'function'
+  );
+}
 
 /**
  * Parses a semantic version string (e.g. "v2.0.15" or "2.0.15") into numeric parts [2, 0, 15].
@@ -68,6 +120,50 @@ export function isNewerVersion(
 }
 
 /**
+ * Cleans raw release notes markdown/text into a single clean list of change strings,
+ * stripping out headers, signature lines, SHA1 hashes, and boilerplate instructions.
+ */
+export function cleanChangelogItems(notesText: string): string[] {
+  if (!notesText) return [];
+  const rawLines = notesText
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean);
+
+  const cleaned: string[] = [];
+  for (const line of rawLines) {
+    if (line.startsWith('#') || line.startsWith('---')) continue;
+    // Strip markdown bold and leading bullet symbols
+    const text = line
+      .replace(/^[•\-\*]\s*/, '')
+      .replace(/\*\*/g, '')
+      .replace(/`/g, '')
+      .trim();
+
+    if (!text) continue;
+
+    // Skip boilerplate headers, signature lines, or download instructions
+    const lower = text.toLowerCase();
+    if (
+      lower.includes('same signature') ||
+      lower.includes('sha1:') ||
+      text.includes('সিগনেচার') ||
+      text.includes('অটোমেটিক ভার্সন') ||
+      text.includes('ডাউনলোড ও আপডেট') ||
+      text.includes('ক্লিক করে ডাউনলোড') ||
+      (text.includes('রিলিজ নোট') && text.endsWith(':')) ||
+      (text.includes('পরিবর্তনসমূহ') && text.endsWith(':'))
+    ) {
+      continue;
+    }
+
+    cleaned.push(text);
+  }
+
+  return cleaned;
+}
+
+/**
  * Checks GitHub Releases API and version.json for a newer APK release.
  */
 export async function checkForAppUpdate(
@@ -82,9 +178,9 @@ export async function checkForAppUpdate(
     hasUpdate: false,
     apkDownloadUrl: DEFAULT_APK_DOWNLOAD_URL,
     releasePageUrl: DEFAULT_RELEASE_PAGE_URL,
-    releaseNotes: 'অফলাইন ফার্স্ট ও স্বয়ংক্রিয় ক্লাউড সিঙ্ক, একই সিগনেচার APK এবং ইন-অ্যাপ অটো-আপডেট সংস্করণ।',
+    releaseNotes:
+      '• সরাসরি Gmail দিয়ে লগইন ও ক্লাউড অটো-সিঙ্ক\n• অ্যাপের ভেতর সরাসরি অটো-আপডেট সুবিধা\n• অফলাইন ও অনলাইন ব্যাকআপ উন্নয়ন',
     publishedAt: new Date().toISOString(),
-    signatureSha1: APK_SIGNATURE_SHA1,
   };
 
   if (typeof navigator !== 'undefined' && !navigator.onLine) {
@@ -111,7 +207,7 @@ export async function checkForAppUpdate(
           data.assets
         )
           ? data.assets
-          : [];
+        : [];
         const apkAsset =
           assets.find((a) => a.name && a.name.endsWith('.apk') && !a.name.includes('latest')) ||
           assets.find((a) => a.name && a.name.endsWith('.apk'));
@@ -119,7 +215,7 @@ export async function checkForAppUpdate(
         const apkDownloadUrl = apkAsset?.browser_download_url || DEFAULT_APK_DOWNLOAD_URL;
         const releasePageUrl = data.html_url || DEFAULT_RELEASE_PAGE_URL;
         const releaseNotes =
-          data.body || `নতুন সংস্করণ v${latestVersion} পাওয়া গেছে। সরাসরি ডাউনলোড ও আপডেট করুন।`;
+          data.body || `• সংস্করণ v${latestVersion} পারফরম্যান্স ও বাগ ফিক্স আপডেট`;
         const publishedAt = data.published_at || new Date().toISOString();
 
         const hasUpdate = isNewerVersion(
@@ -139,7 +235,6 @@ export async function checkForAppUpdate(
           releasePageUrl,
           releaseNotes,
           publishedAt,
-          signatureSha1: APK_SIGNATURE_SHA1,
         };
       }
     }
@@ -170,9 +265,8 @@ export async function checkForAppUpdate(
           hasUpdate,
           apkDownloadUrl: meta.apkUrl || meta.latestApkUrl || DEFAULT_APK_DOWNLOAD_URL,
           releasePageUrl: meta.releasePageUrl || DEFAULT_RELEASE_PAGE_URL,
-          releaseNotes: meta.notes || `নতুন সংস্করণ v${latestVersion} রিলিজ হয়েছে।`,
+          releaseNotes: meta.notes || `• সংস্করণ v${latestVersion} রিলিজ হয়েছে।`,
           publishedAt: meta.publishedAt || new Date().toISOString(),
-          signatureSha1: meta.signatureSha1 || APK_SIGNATURE_SHA1,
         };
       }
     }
@@ -184,10 +278,39 @@ export async function checkForAppUpdate(
 }
 
 /**
- * Triggers direct download and installation of the signed APK inside Android WebView / browser.
+ * Triggers direct download and installation of the APK:
+ * - Inside the installed Android APK: uses the native AndroidApkUpdater JavascriptInterface
+ *   to download the APK with live progress into cache and launch the Android Package Installer.
+ * - In mobile/desktop web browser: initiates direct APK file download.
  */
-export function triggerApkUpdateDownload(apkUrl: string): void {
+export function triggerApkUpdateDownload(
+  apkUrl: string,
+  onProgress?: (
+    percent: number,
+    status: 'downloading' | 'installing' | 'done' | 'error',
+    errorMsg?: string
+  ) => void
+): void {
   const targetUrl = apkUrl || DEFAULT_APK_DOWNLOAD_URL;
+
+  // 1. Native Android APK In-App Downloader + Package Installer
+  if (isNativeAndroidApk() && window.AndroidApkUpdater?.downloadAndInstall) {
+    if (onProgress) {
+      window.__onApkDownloadProgress = (pct, status, err) => {
+        onProgress(pct, status, err);
+      };
+    }
+    window.AndroidApkUpdater.downloadAndInstall(targetUrl);
+    return;
+  }
+
+  // 2. Browser Download (Mobile Chrome / Desktop Browser)
+  if (onProgress) {
+    onProgress(35, 'downloading');
+    setTimeout(() => onProgress(80, 'downloading'), 350);
+    setTimeout(() => onProgress(100, 'done'), 800);
+  }
+
   const link = document.createElement('a');
   link.href = targetUrl;
   link.setAttribute('download', 'Biddut-Bill-update.apk');

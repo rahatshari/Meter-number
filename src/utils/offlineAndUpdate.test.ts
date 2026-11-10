@@ -99,3 +99,44 @@ test('parseVersionParts and isNewerVersion accurately detect auto-incremented AP
   assert.equal(isNewerVersion('2.0.10', '2.0.2'), false);
   assert.equal(isNewerVersion('2.0.1', '2.0.1', 101, 102), true);
 });
+
+test('normalizeGmailInput, getCleanUserEmail, and getSavedGmailAccounts have no default Gmail', async () => {
+  const {
+    normalizeGmailInput,
+    getCleanUserEmail,
+    deriveAppPasswordForEmail,
+    getSavedGmailAccounts,
+  } = await import('./authHelpers');
+  assert.equal(normalizeGmailInput('user1'), 'user1@gmail.com');
+  assert.equal(normalizeGmailInput('  User2@Gmail.com '), 'user2@gmail.com');
+  assert.equal(
+    getCleanUserEmail({ email: 'user2+biddut@gmail.com' }),
+    'user2@gmail.com'
+  );
+  // Fresh storage has no default Gmail pre-populated
+  assert.deepEqual(getSavedGmailAccounts(), []);
+
+  const pw1 = await deriveAppPasswordForEmail('user2@gmail.com');
+  const pw2 = await deriveAppPasswordForEmail('user2+biddut@gmail.com');
+  assert.equal(pw1, pw2);
+});
+
+test('cleanChangelogItems removes signature, SHA1, and markdown headers leaving only clean changes', async () => {
+  const { cleanChangelogItems, isAutoUpdateEnabled } = await import('./appUpdater');
+  const rawNotes = `
+    ## ⚡ বিদ্যুৎ বিল — Android APK রিলিজ (v2.0.5)
+    ### 📋 রিলিজ নোট ও পরিবর্তনসমূহ:
+    • যেকোনো Gmail দিয়ে সরাসরি লগইন
+    • অ্যাপের ভেতর সরাসরি অটো-আপডেট সুবিধা
+    ---
+    - **সিগনেচার (Same Signature)**: SHA1: A7:F8:FB
+    - নিচের ফাইলটি ক্লিক করে ডাউনলোড করুন
+  `;
+  const cleaned = cleanChangelogItems(rawNotes);
+  assert.deepEqual(cleaned, [
+    'যেকোনো Gmail দিয়ে সরাসরি লগইন',
+    'অ্যাপের ভেতর সরাসরি অটো-আপডেট সুবিধা',
+  ]);
+  assert.equal(isAutoUpdateEnabled(), true);
+});
+

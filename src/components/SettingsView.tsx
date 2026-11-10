@@ -3,6 +3,7 @@ import { User } from 'firebase/auth';
 import { Customer, ThemeMode } from '../types';
 import { toBengaliNum, isCustomerPaidThisMonth } from '../utils/bengali';
 import { AppUpdateInfo, triggerApkUpdateDownload } from '../utils/appUpdater';
+import { getCleanUserEmail } from '../utils/authHelpers';
 import { UserAvatar } from './UserAvatar';
 
 interface SettingsViewProps {
@@ -13,6 +14,8 @@ interface SettingsViewProps {
   isSyncing: boolean;
   updateInfo: AppUpdateInfo;
   isCheckingUpdate: boolean;
+  autoUpdateEnabled: boolean;
+  onToggleAutoUpdate: (enabled: boolean) => void;
   onToggleTheme: () => void;
   onOpenAuthModal: () => void;
   onLogout: () => Promise<void>;
@@ -35,6 +38,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   isSyncing,
   updateInfo,
   isCheckingUpdate,
+  autoUpdateEnabled,
+  onToggleAutoUpdate,
   onToggleTheme,
   onOpenAuthModal,
   onLogout,
@@ -331,18 +336,20 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <UserAvatar user={currentUser} size={46} showStatusDot={true} />
               <div style={{ minWidth: 0, flex: 1 }}>
                 <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--md-sys-color-on-surface)' }} className="truncate">
-                  {currentUser.displayName || 'সম্মানিত ব্যবহারকারী'}
+                  {currentUser.displayName && !currentUser.displayName.includes('+biddut')
+                    ? currentUser.displayName
+                    : getCleanUserEmail(currentUser).split('@')[0] || 'সম্মানিত ব্যবহারকারী'}
                 </div>
                 <div style={{ fontSize: '12px', color: 'var(--md-sys-color-on-surface-variant)' }} className="truncate">
-                  {currentUser.email}
+                  {getCleanUserEmail(currentUser)}
                 </div>
                 <div style={{ fontSize: '11px', color: 'var(--md-sys-color-success)', fontWeight: 600, marginTop: '2px' }}>
-                  ✓ স্বয়ংক্রিয় ক্লাউড আপলোড চালু
+                  ✓ ফায়ারবেস ক্লাউড অটো-সিঙ্ক সক্রিয়
                 </div>
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
               <button
                 type="button"
                 className="md3-btn-tonal"
@@ -355,12 +362,21 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <button
                 type="button"
                 className="md3-btn-outlined"
-                style={{ padding: '10px 12px', fontSize: '13px', color: 'var(--md-sys-color-error)', borderColor: 'var(--md-sys-color-error)' }}
-                onClick={onLogout}
+                style={{ padding: '10px 12px', fontSize: '13px' }}
+                onClick={onOpenAuthModal}
               >
-                🚪 লগআউট
+                🔄 অন্য Gmail দিন
               </button>
             </div>
+
+            <button
+              type="button"
+              className="md3-btn-outlined"
+              style={{ width: '100%', padding: '9px 12px', fontSize: '12.5px', color: 'var(--md-sys-color-error)', borderColor: 'var(--md-sys-color-error)' }}
+              onClick={onLogout}
+            >
+              🚪 লগআউট করুন
+            </button>
           </div>
         ) : (
           <div>
@@ -384,7 +400,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         )}
       </div>
 
-      {/* SECTION 2: APK Auto-Update & Same Signature Release Hub */}
+      {/* SECTION 2: APK Auto-Update & Release Hub */}
       <div className="md3-card" style={{ marginBottom: '16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
           <div
@@ -430,9 +446,60 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </span>
             </div>
             <p style={{ margin: '2px 0 0', fontSize: '12px', color: 'var(--md-sys-color-on-surface-variant)' }}>
-              GitHub রিলিজ · একই সিগনেচার (Same Signature) আপডেট
+              অ্যাপের ভেতর থেকে সরাসরি আপডেট ও পরিবর্তনসমূহ
             </p>
           </div>
+        </div>
+
+        {/* Auto-Update On / Off Switch Row */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '10px',
+            padding: '10px 12px',
+            borderRadius: '12px',
+            backgroundColor: 'var(--md-sys-color-surface)',
+            border: '1px solid var(--md-sys-color-outline-variant)',
+            marginBottom: '10px',
+          }}
+        >
+          <div>
+            <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--md-sys-color-on-surface)' }}>
+              🔄 অটো-আপডেট সিস্টেম
+            </div>
+            <div style={{ fontSize: '11px', color: 'var(--md-sys-color-on-surface-variant)', marginTop: '2px' }}>
+              {autoUpdateEnabled
+                ? 'চালু আছে — নতুন আপডেট এলে স্বয়ংক্রিয়ভাবে জানাবে'
+                : 'বন্ধ আছে — নিজে চেক না করলে আপডেট নোটিফিকেশন আসবে না'}
+            </div>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={autoUpdateEnabled}
+            onClick={() => onToggleAutoUpdate(!autoUpdateEnabled)}
+            style={{
+              padding: '6px 14px',
+              borderRadius: '999px',
+              border: '1.5px solid',
+              borderColor: autoUpdateEnabled
+                ? 'var(--md-sys-color-primary)'
+                : 'var(--md-sys-color-outline)',
+              backgroundColor: autoUpdateEnabled
+                ? 'var(--md-sys-color-primary)'
+                : 'var(--md-sys-color-surface-container)',
+              color: autoUpdateEnabled ? '#FFFFFF' : 'var(--md-sys-color-on-surface-variant)',
+              fontSize: '12px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+              flexShrink: 0,
+            }}
+          >
+            {autoUpdateEnabled ? '✓ চালু আছে' : 'বন্ধ আছে'}
+          </button>
         </div>
 
         <div
@@ -455,7 +522,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </strong>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ color: 'var(--md-sys-color-on-surface-variant)' }}>সর্বশেষ GitHub রিলিজ:</span>
+            <span style={{ color: 'var(--md-sys-color-on-surface-variant)' }}>সর্বশেষ রিলিজ ভার্সন:</span>
             <strong
               style={{
                 color: updateInfo.hasUpdate
@@ -467,12 +534,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               {updateInfo.hasUpdate ? '(নতুন আপডেট আছে!)' : '(আপ-টু-ডেট)'}
             </strong>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ color: 'var(--md-sys-color-on-surface-variant)' }}>APK সিগনেচার স্ট্যাটাস:</span>
-            <span style={{ color: 'var(--md-sys-color-success)', fontWeight: 700 }}>
-              ✓ Same Signature Verified
-            </span>
-          </div>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
@@ -482,7 +543,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             style={{ padding: '10px 12px', fontSize: '12.5px' }}
             onClick={onOpenUpdateModal}
           >
-            📲 {updateInfo.hasUpdate ? 'এখনই আপডেট করুন' : 'আপডেট সেন্টার খুলুন'}
+            📲 {updateInfo.hasUpdate ? 'এখনই আপডেট করুন' : 'আপডেট ও পরিবর্তনসমূহ'}
           </button>
 
           <button
@@ -503,7 +564,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             style={{ padding: '8px 10px', fontSize: '11.5px' }}
             onClick={() => {
               triggerApkUpdateDownload(updateInfo.apkDownloadUrl);
-              onShowToast('📥 সর্বশেষ স্বাক্ষরিত APK ডাউনলোড শুরু হয়েছে!');
+              onShowToast('📥 সর্বশেষ APK ডাউনলোড শুরু হয়েছে!');
             }}
           >
             📥 সরাসরি APK ডাউনলোড
@@ -518,24 +579,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             🔔 টেস্ট আপডেট অ্যালার্ট
           </button>
         </div>
-
-        <button
-          type="button"
-          className="md3-btn-tonal"
-          style={{
-            width: '100%',
-            marginTop: '8px',
-            padding: '9px 12px',
-            fontSize: '12.5px',
-            justifyContent: 'center',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-          }}
-          onClick={onOpenUpdateModal}
-        >
-          <span>📋</span> সকল রিলিজ নোট ও পরিবর্তনসমূহ দেখুন
-        </button>
       </div>
 
       {/* SECTION 3: Data Backup & Restore */}
@@ -869,7 +912,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           }}
         >
           বিদ্যুৎ বিল · ভার্সন {toBengaliNum(updateInfo.currentVersion)} (বিল্ড #{toBengaliNum(updateInfo.currentVersionCode)})<br />
-          অফলাইন-ফার্স্ট ও স্বয়ংক্রিয় ক্লাউড সিঙ্ক · Same Signature APK
+          অফলাইন-ফার্স্ট ও স্বয়ংক্রিয় ক্লাউড সিঙ্ক
         </div>
       </div>
     </div>

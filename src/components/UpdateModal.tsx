@@ -1,5 +1,9 @@
 import React, { useState } from 'react';
-import { AppUpdateInfo, triggerApkUpdateDownload } from '../utils/appUpdater';
+import {
+  AppUpdateInfo,
+  cleanChangelogItems,
+  triggerApkUpdateDownload,
+} from '../utils/appUpdater';
 import { toBengaliNum } from '../utils/bengali';
 
 interface UpdateModalProps {
@@ -7,6 +11,8 @@ interface UpdateModalProps {
   onClose: () => void;
   updateInfo: AppUpdateInfo;
   isChecking: boolean;
+  autoUpdateEnabled: boolean;
+  onToggleAutoUpdate: (enabled: boolean) => void;
   onCheckAgain: () => Promise<void>;
   onShowToast: (msg: string) => void;
 }
@@ -16,109 +22,48 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
   onClose,
   updateInfo,
   isChecking,
+  autoUpdateEnabled,
+  onToggleAutoUpdate,
   onCheckAgain,
   onShowToast,
 }) => {
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState(0);
-  const [activeTab, setActiveTab] = useState<'changes' | 'signature' | 'features'>('changes');
+  const [downloadStatusText, setDownloadStatusText] = useState('APK ডাউনলোড হচ্ছে...');
 
   if (!isOpen) return null;
 
   const handleStartUpdate = () => {
     setIsDownloading(true);
-    setDownloadProgress(15);
+    setDownloadProgress(10);
+    setDownloadStatusText('নতুন আপডেট ডাউনলোড হচ্ছে...');
 
-    const step1 = setTimeout(() => setDownloadProgress(55), 350);
-    const step2 = setTimeout(() => setDownloadProgress(90), 750);
-    const step3 = setTimeout(() => {
-      setDownloadProgress(100);
-      triggerApkUpdateDownload(updateInfo.apkDownloadUrl);
-      onShowToast('📥 নতুন APK ডাউনলোড শুরু হয়েছে! ডাউনলোড শেষে Install ট্যাপ করুন।');
-      setTimeout(() => {
+    triggerApkUpdateDownload(updateInfo.apkDownloadUrl, (pct, status, errorMsg) => {
+      setDownloadProgress(pct);
+      if (status === 'downloading') {
+        setDownloadStatusText('নতুন আপডেট ডাউনলোড হচ্ছে...');
+      } else if (status === 'installing') {
+        setDownloadStatusText('ডাউনলোড সম্পন্ন! ইনস্টলার খোলা হচ্ছে...');
+      } else if (status === 'done') {
+        setDownloadStatusText('ডাউনলোড সম্পন্ন! এখন Install ট্যাপ করুন।');
+        onShowToast('📥 নতুন আপডেট ডাউনলোড হয়েছে! এখন Install বাটনে ট্যাপ করুন।');
+        setTimeout(() => {
+          setIsDownloading(false);
+          setDownloadProgress(0);
+        }, 1800);
+      } else if (status === 'error') {
         setIsDownloading(false);
         setDownloadProgress(0);
-      }, 1500);
-    }, 1100);
-
-    return () => {
-      clearTimeout(step1);
-      clearTimeout(step2);
-      clearTimeout(step3);
-    };
-  };
-
-  // Parse raw release notes text into clean, structured change items
-  const parseNotesToItems = (notesText: string) => {
-    if (!notesText) return [];
-    const lines = notesText
-      .split('\n')
-      .map((l) => l.trim())
-      .filter((l) => l.length > 0 && !l.startsWith('#') && !l.startsWith('---'));
-
-    const items: Array<{ title: string; desc: string; icon: string }> = [];
-
-    for (const line of lines) {
-      const cleanLine = line.replace(/^[•\-\*]\s*/, '').trim();
-      if (!cleanLine) continue;
-
-      let icon = '⚡';
-      if (cleanLine.includes('লগইন') || cleanLine.includes('ক্রোম') || cleanLine.includes('Login')) icon = '📱';
-      else if (cleanLine.includes('স্প্ল্যাশ') || cleanLine.includes('লোগো') || cleanLine.includes('Splash')) icon = '🖼️';
-      else if (cleanLine.includes('প্রোফাইল') || cleanLine.includes('ছবি') || cleanLine.includes('অবতার')) icon = '👤';
-      else if (cleanLine.includes('সিঙ্ক') || cleanLine.includes('ক্লাউড') || cleanLine.includes('অফলাইন')) icon = '☁️';
-      else if (cleanLine.includes('সিগনেচার') || cleanLine.includes('নিরাপত্তা') || cleanLine.includes('Signature')) icon = '🔒';
-      else if (cleanLine.includes('ব্যাকআপ') || cleanLine.includes('এক্সপোর্ট')) icon = '💾';
-      else if (cleanLine.includes('ডিজাইন') || cleanLine.includes('UI') || cleanLine.includes('থিম')) icon = '🎨';
-
-      if (cleanLine.includes(':')) {
-        const [titlePart, ...rest] = cleanLine.split(':');
-        items.push({
-          title: titlePart.trim(),
-          desc: rest.join(':').trim(),
-          icon,
-        });
-      } else {
-        items.push({
-          title: cleanLine,
-          desc: '',
-          icon,
-        });
+        onShowToast(
+          errorMsg
+            ? `আপডেট ডাউনলোডে সমস্যা: ${errorMsg}`
+            : 'ডাউনলোডে সমস্যা হয়েছে, পুনরায় চেষ্টা করুন।'
+        );
       }
-    }
-
-    return items;
+    });
   };
 
-  const parsedChanges = parseNotesToItems(updateInfo.releaseNotes);
-
-  const defaultKnownFeatures = [
-    {
-      icon: '📱',
-      title: 'অ্যাপে সরাসরি লগইন',
-      desc: 'ক্রোম ব্রাউজারে রিডাইরেক্ট না হয়ে অ্যাপের ভেতর সরাসরি জিমেইল দিয়ে সাইন-ইন।',
-    },
-    {
-      icon: '🖼️',
-      title: 'লোগো স্প্ল্যাশ স্ক্রিন',
-      desc: 'অ্যাপ চালুর প্রথম মুহূর্তেই বিদ্যুৎ বিলের আসল লোগো সহ আকর্ষণীয় অ্যানিমেশন।',
-    },
-    {
-      icon: '👤',
-      title: 'প্রোফাইল ছবি ও মনোগ্রাম',
-      desc: 'গুগল রেফারার পলিসি সমস্যার সমাধান এবং ছবি না থাকলেও আকর্ষণীয় মনোগ্রাম অবতার।',
-    },
-    {
-      icon: '☁️',
-      title: 'অফলাইন-ফার্স্ট অটো সিঙ্ক',
-      desc: 'ইন্টারনেট ছাড়াও সব হিসাব সচল এবং নেট পেলেই ক্লাউডে স্বয়ংক্রিয় ব্যাকআপ।',
-    },
-    {
-      icon: '🔒',
-      title: 'একই সিগনেচার (Same Signature)',
-      desc: 'অ্যাপ আনইনস্টল ছাড়াই সরাসরি আপডেট; গ্রাহকদের সংরক্ষিত ডেটা কখনো মুছবে না।',
-    },
-  ];
+  const changeItems = cleanChangelogItems(updateInfo.releaseNotes);
 
   return (
     <div className="md3-overlay" onClick={onClose}>
@@ -132,12 +77,12 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
       >
         <div className="md3-drag-handle" />
 
-        {/* Header with official APK Logo */}
+        {/* Header with official App Logo */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
           <div
             style={{
-              width: '50px',
-              height: '50px',
+              width: '48px',
+              height: '48px',
               borderRadius: '14px',
               backgroundColor: '#FFFFFF',
               border: '1.5px solid var(--md-sys-color-outline-variant)',
@@ -151,8 +96,8 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
           >
             <img
               src="./icon.png"
-              alt="বিদ্যুৎ বিল APK লোগো"
-              style={{ width: '42px', height: '42px', objectFit: 'contain' }}
+              alt="বিদ্যুৎ বিল লোগো"
+              style={{ width: '40px', height: '40px', objectFit: 'contain' }}
             />
           </div>
           <div style={{ minWidth: 0, flex: 1 }}>
@@ -166,7 +111,7 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
                   margin: 0,
                 }}
               >
-                রিলিজ নোট ও পরিবর্তনসমূহ
+                অ্যাপ আপডেট ও পরিবর্তনসমূহ
               </h3>
               <span
                 style={{
@@ -192,318 +137,135 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
                 margin: '2px 0 0',
               }}
             >
-              GitHub অটো-রিলিজ ও ইন-অ্যাপ লাইভ আপডেট হাব
+              বর্তমান ভার্সন: v{toBengaliNum(updateInfo.currentVersion)} · নতুন ভার্সন: v
+              {toBengaliNum(updateInfo.latestVersion)}
             </p>
           </div>
         </div>
 
-        {/* Version Comparison Box */}
+        {/* Auto-Update On / Off Switch Card */}
         <div
           style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '10px',
+            padding: '10px 12px',
+            borderRadius: '12px',
+            backgroundColor: 'var(--md-sys-color-surface-container)',
+            border: '1px solid var(--md-sys-color-outline-variant)',
             marginBottom: '12px',
           }}
         >
-          <div
-            style={{
-              padding: '8px 12px',
-              borderRadius: '12px',
-              backgroundColor: 'var(--md-sys-color-surface)',
-              border: '1px solid var(--md-sys-color-outline-variant)',
-            }}
-          >
-            <div style={{ fontSize: '10.5px', color: 'var(--md-sys-color-on-surface-variant)' }}>
-              বর্তমান ইনস্টলকৃত ভার্সন
-            </div>
+          <div>
             <div
               style={{
-                fontSize: '14.5px',
+                fontSize: '13px',
                 fontWeight: 700,
                 color: 'var(--md-sys-color-on-surface)',
+              }}
+            >
+              🔄 অটো-আপডেট সিস্টেম
+            </div>
+            <div
+              style={{
+                fontSize: '11px',
+                color: 'var(--md-sys-color-on-surface-variant)',
                 marginTop: '1px',
               }}
             >
-              v{toBengaliNum(updateInfo.currentVersion)}
-            </div>
-            <div style={{ fontSize: '10px', color: 'var(--md-sys-color-on-surface-variant)' }}>
-              বিল্ড কোড: #{toBengaliNum(updateInfo.currentVersionCode)}
+              {autoUpdateEnabled
+                ? 'চালু আছে — নতুন আপডেট এলে স্বয়ংক্রিয়ভাবে জানাবে'
+                : 'বন্ধ আছে — নিজে চেক না করলে আপডেট পপআপ আসবে না'}
             </div>
           </div>
 
-          <div
+          <button
+            type="button"
+            role="switch"
+            aria-checked={autoUpdateEnabled}
+            onClick={() => onToggleAutoUpdate(!autoUpdateEnabled)}
             style={{
-              padding: '8px 12px',
-              borderRadius: '12px',
-              backgroundColor: updateInfo.hasUpdate
-                ? 'var(--md-sys-color-primary-container)'
-                : 'var(--md-sys-color-surface)',
-              border: '1px solid',
-              borderColor: updateInfo.hasUpdate
+              padding: '6px 12px',
+              borderRadius: '999px',
+              border: '1.5px solid',
+              borderColor: autoUpdateEnabled
                 ? 'var(--md-sys-color-primary)'
-                : 'var(--md-sys-color-outline-variant)',
+                : 'var(--md-sys-color-outline)',
+              backgroundColor: autoUpdateEnabled
+                ? 'var(--md-sys-color-primary)'
+                : 'var(--md-sys-color-surface)',
+              color: autoUpdateEnabled ? '#FFFFFF' : 'var(--md-sys-color-on-surface-variant)',
+              fontSize: '11.5px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+              flexShrink: 0,
+              transition: 'all 0.15s ease',
             }}
           >
-            <div
-              style={{
-                fontSize: '10.5px',
-                color: updateInfo.hasUpdate
-                  ? 'var(--md-sys-color-on-primary-container)'
-                  : 'var(--md-sys-color-on-surface-variant)',
-              }}
-            >
-              সর্বশেষ রিলিজ ভার্সন
-            </div>
-            <div
-              style={{
-                fontSize: '14.5px',
-                fontWeight: 700,
-                color: updateInfo.hasUpdate
-                  ? 'var(--md-sys-color-primary)'
-                  : 'var(--md-sys-color-success)',
-                marginTop: '1px',
-              }}
-            >
-              v{toBengaliNum(updateInfo.latestVersion)}
-            </div>
-            <div style={{ fontSize: '10px', color: 'var(--md-sys-color-on-surface-variant)' }}>
-              {updateInfo.hasUpdate ? 'নতুন সংস্করণ উপলব্ধ' : '✓ আপনি আপ-টু-ডেট'}
-            </div>
-          </div>
+            {autoUpdateEnabled ? '✓ চালু আছে' : 'বন্ধ আছে'}
+          </button>
         </div>
 
-        {/* Tab Pills for Changelog vs Signature vs Features */}
+        {/* SINGLE CLEAN CHANGELOG SECTION ("পরিবর্তনসমূহ") */}
         <div
           style={{
-            display: 'grid',
-            gridTemplateColumns: '1.2fr 1fr 1fr',
-            gap: '4px',
-            backgroundColor: 'var(--md-sys-color-surface-container-high)',
-            padding: '3px',
-            borderRadius: '10px',
-            marginBottom: '12px',
+            padding: '12px',
+            borderRadius: '12px',
+            backgroundColor: 'var(--md-sys-color-surface)',
+            border: '1px solid var(--md-sys-color-outline-variant)',
+            marginBottom: '14px',
+            maxHeight: '190px',
+            overflowY: 'auto',
           }}
         >
-          <button
-            type="button"
-            onClick={() => setActiveTab('changes')}
-            style={{
-              padding: '6px 4px',
-              border: 'none',
-              borderRadius: '7px',
-              fontSize: '11.5px',
-              fontWeight: 700,
-              backgroundColor: activeTab === 'changes' ? 'var(--md-sys-color-surface-container)' : 'transparent',
-              color: activeTab === 'changes' ? 'var(--md-sys-color-primary)' : 'var(--md-sys-color-on-surface-variant)',
-              boxShadow: activeTab === 'changes' ? 'var(--md-elevation-1)' : 'none',
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            📋 পরিবর্তনসমূহ
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('features')}
-            style={{
-              padding: '6px 4px',
-              border: 'none',
-              borderRadius: '7px',
-              fontSize: '11.5px',
-              fontWeight: 700,
-              backgroundColor: activeTab === 'features' ? 'var(--md-sys-color-surface-container)' : 'transparent',
-              color: activeTab === 'features' ? 'var(--md-sys-color-primary)' : 'var(--md-sys-color-on-surface-variant)',
-              boxShadow: activeTab === 'features' ? 'var(--md-elevation-1)' : 'none',
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            ✨ ফিচারসমূহ
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('signature')}
-            style={{
-              padding: '6px 4px',
-              border: 'none',
-              borderRadius: '7px',
-              fontSize: '11.5px',
-              fontWeight: 700,
-              backgroundColor: activeTab === 'signature' ? 'var(--md-sys-color-surface-container)' : 'transparent',
-              color: activeTab === 'signature' ? 'var(--md-sys-color-primary)' : 'var(--md-sys-color-on-surface-variant)',
-              boxShadow: activeTab === 'signature' ? 'var(--md-elevation-1)' : 'none',
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            🔒 সিগনেচার
-          </button>
-        </div>
-
-        {/* TAB 1: DETAILED CHANGELOG & RELEASE NOTES */}
-        {activeTab === 'changes' && (
           <div
             style={{
-              padding: '12px',
-              borderRadius: '12px',
-              backgroundColor: 'var(--md-sys-color-surface)',
-              border: '1px solid var(--md-sys-color-outline-variant)',
-              marginBottom: '14px',
-              maxHeight: '170px',
-              overflowY: 'auto',
+              fontSize: '12.5px',
+              fontWeight: 700,
+              color: 'var(--md-sys-color-on-surface)',
+              marginBottom: '8px',
             }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-              <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--md-sys-color-on-surface)' }}>
-                {updateInfo.hasUpdate
-                  ? `🚀 v${toBengaliNum(updateInfo.latestVersion)} আপডেটে কি কি যুক্ত হয়েছে:`
-                  : `✓ v${toBengaliNum(updateInfo.currentVersion)} সংস্করণের পরিবর্তনসমূহ:`}
-              </span>
-              <span style={{ fontSize: '10px', color: 'var(--md-sys-color-primary)', fontWeight: 600 }}>
-                {parsedChanges.length > 0 ? `${toBengaliNum(parsedChanges.length)}টি পরিবর্তন` : 'আপ-টু-ডেট'}
-              </span>
-            </div>
-
-            {parsedChanges.length > 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {parsedChanges.map((item, index) => (
-                  <div
-                    key={index}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'flex-start',
-                      gap: '8px',
-                      padding: '8px 10px',
-                      borderRadius: '8px',
-                      backgroundColor: 'var(--md-sys-color-surface-container-low)',
-                      border: '1px solid var(--md-sys-color-outline-variant)',
-                    }}
-                  >
-                    <span style={{ fontSize: '15px', lineHeight: 1.2, flexShrink: 0 }}>
-                      {item.icon}
-                    </span>
-                    <div style={{ minWidth: 0, flex: 1 }}>
-                      <div
-                        style={{
-                          fontSize: '12px',
-                          fontWeight: 700,
-                          color: 'var(--md-sys-color-on-surface)',
-                          lineHeight: 1.35,
-                        }}
-                      >
-                        {item.title}
-                      </div>
-                      {item.desc && (
-                        <div
-                          style={{
-                            fontSize: '11px',
-                            color: 'var(--md-sys-color-on-surface-variant)',
-                            marginTop: '2px',
-                            lineHeight: 1.4,
-                          }}
-                        >
-                          {item.desc}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div style={{ fontSize: '12px', color: 'var(--md-sys-color-on-surface-variant)', lineHeight: 1.5 }}>
-                {updateInfo.releaseNotes}
-              </div>
-            )}
+            📋 পরিবর্তনসমূহ (v{toBengaliNum(updateInfo.latestVersion)}):
           </div>
-        )}
 
-        {/* TAB 2: APP FEATURES LIST */}
-        {activeTab === 'features' && (
-          <div
-            style={{
-              padding: '12px',
-              borderRadius: '12px',
-              backgroundColor: 'var(--md-sys-color-surface)',
-              border: '1px solid var(--md-sys-color-outline-variant)',
-              marginBottom: '14px',
-              maxHeight: '170px',
-              overflowY: 'auto',
-            }}
-          >
-            <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--md-sys-color-on-surface)', marginBottom: '8px' }}>
-              ✨ বিদ্যুৎ বিল অ্যাপের সক্রিয় সুবিধাসমূহ:
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {defaultKnownFeatures.map((f, idx) => (
+          {changeItems.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              {changeItems.map((line, index) => (
                 <div
-                  key={idx}
+                  key={index}
                   style={{
                     display: 'flex',
                     alignItems: 'flex-start',
                     gap: '8px',
-                    padding: '8px 10px',
+                    padding: '7px 10px',
                     borderRadius: '8px',
                     backgroundColor: 'var(--md-sys-color-surface-container-low)',
                     border: '1px solid var(--md-sys-color-outline-variant)',
+                    fontSize: '12px',
+                    color: 'var(--md-sys-color-on-surface)',
+                    lineHeight: 1.4,
                   }}
                 >
-                  <span style={{ fontSize: '15px', lineHeight: 1.2, flexShrink: 0 }}>
-                    {f.icon}
-                  </span>
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--md-sys-color-on-surface)' }}>
-                      {f.title}
-                    </div>
-                    <div style={{ fontSize: '11px', color: 'var(--md-sys-color-on-surface-variant)', marginTop: '2px' }}>
-                      {f.desc}
-                    </div>
-                  </div>
+                  <span style={{ color: 'var(--md-sys-color-primary)', fontWeight: 700 }}>•</span>
+                  <span style={{ flex: 1 }}>{line}</span>
                 </div>
               ))}
             </div>
-          </div>
-        )}
-
-        {/* TAB 3: SIGNATURE & SECURITY */}
-        {activeTab === 'signature' && (
-          <div
-            style={{
-              padding: '12px',
-              borderRadius: '12px',
-              backgroundColor: 'var(--md-sys-color-success-container)',
-              color: 'var(--md-sys-color-on-success-container)',
-              fontSize: '12px',
-              lineHeight: 1.45,
-              marginBottom: '14px',
-              border: '1px solid var(--md-sys-color-success)',
-            }}
-          >
-            <div style={{ fontWeight: 700, marginBottom: '4px', fontSize: '13px' }}>
-              ✓ একই সিগনেচার (Same Signature) সুরক্ষিত
-            </div>
-            <div style={{ fontSize: '11.5px', marginBottom: '8px' }}>
-              এই APK ফাইলটি একই স্থায়ী ডিজিটাল সার্টিফিকেট দিয়ে সাইন করা হয়েছে। যার ফলে:
-            </div>
-            <ul style={{ margin: '0 0 8px', paddingLeft: '18px', fontSize: '11.5px' }}>
-              <li>পূর্বের অ্যাপ আনইনস্টল করতে হবে না।</li>
-              <li>গ্রাহকের কোনো ডেটা বা হিসাব মুছে যাবে না।</li>
-              <li>এক ক্লিকেই নতুন ফিচার যুক্ত হয়ে আপডেট হবে।</li>
-            </ul>
+          ) : (
             <div
               style={{
-                fontSize: '10.5px',
-                fontFamily: 'monospace',
-                backgroundColor: 'rgba(255,255,255,0.7)',
-                padding: '4px 6px',
-                borderRadius: '6px',
-                wordBreak: 'break-all',
+                fontSize: '12px',
+                color: 'var(--md-sys-color-on-surface-variant)',
+                lineHeight: 1.5,
               }}
             >
-              SHA1: {updateInfo.signatureSha1}
+              • অ্যাপের পারফরম্যান্স ও আপডেট সিস্টেম উন্নত করা হয়েছে।
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Progress Bar during APK download */}
         {isDownloading && (
@@ -518,7 +280,7 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
                 color: 'var(--md-sys-color-primary)',
               }}
             >
-              <span>নতুন APK প্যাকেজ ডাউনলোড হচ্ছে...</span>
+              <span>{downloadStatusText}</span>
               <span>{toBengaliNum(downloadProgress)}%</span>
             </div>
             <div
@@ -535,7 +297,7 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
                   width: `${downloadProgress}%`,
                   height: '100%',
                   backgroundColor: 'var(--md-sys-color-primary)',
-                  transition: 'width 0.3s ease',
+                  transition: 'width 0.25s ease',
                 }}
               />
             </div>
@@ -564,16 +326,18 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
               <polyline points="7 10 12 15 17 10" />
               <line x1="12" y1="15" x2="12" y2="3" />
             </svg>
-            {updateInfo.hasUpdate
-              ? `আপডেট ডাউনলোড করুন (v${toBengaliNum(updateInfo.latestVersion)})`
-              : 'সর্বশেষ APK ডাউনলোড / রি-ইনস্টল করুন'}
+            {isDownloading
+              ? `ডাউনলোড হচ্ছে (${toBengaliNum(downloadProgress)}%)...`
+              : updateInfo.hasUpdate
+              ? `এখনই আপডেট করুন (v${toBengaliNum(updateInfo.latestVersion)})`
+              : 'সর্বশেষ APK ডাউনলোড ও ইনস্টল করুন'}
           </button>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
             <button
               type="button"
               className="md3-btn-tonal"
-              disabled={isChecking}
+              disabled={isChecking || isDownloading}
               onClick={onCheckAgain}
               style={{ height: '40px', fontSize: '12px' }}
             >
