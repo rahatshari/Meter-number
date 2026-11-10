@@ -16,10 +16,12 @@ declare global {
       isNativeApk?: () => boolean;
       downloadAndInstall?: (apkUrl: string) => void;
       pickGoogleAccount?: () => void;
+      saveBackupToGoogleDrive?: (jsonContent: string, fileName: string) => void;
     };
     AndroidNativeAuth?: {
       isNativeApk?: () => boolean;
       pickGoogleAccount?: () => void;
+      saveBackupToGoogleDrive?: (jsonContent: string, fileName: string) => void;
     };
     __onApkDownloadProgress?: (
       percent: number,

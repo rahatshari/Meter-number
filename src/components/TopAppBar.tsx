@@ -125,44 +125,6 @@ export const TopAppBar: React.FC<TopAppBarProps> = ({
 
         <button
           type="button"
-          className="md3-icon-btn relative"
-          onClick={onOpenUpdateModal}
-          title="অ্যাপ আপডেট চেক করুন"
-          aria-label="অ্যাপ আপডেট সেন্টার"
-        >
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-            <path d="M3 3v5h5" />
-            <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
-            <path d="M16 16h5v5" />
-          </svg>
-          {hasUpdate && (
-            <span
-              style={{
-                position: 'absolute',
-                top: '5px',
-                right: '5px',
-                width: '9px',
-                height: '9px',
-                borderRadius: '50%',
-                backgroundColor: 'var(--md-sys-color-error)',
-                border: '1.5px solid var(--md-sys-color-surface)',
-              }}
-            />
-          )}
-        </button>
-
-        <button
-          type="button"
           className="md3-icon-btn"
           onClick={onToggleTheme}
           title={themeMode === 'dark' ? 'লাইট মোড চালু করুন' : 'ডার্ক মোড চালু করুন'}

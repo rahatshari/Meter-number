@@ -30,7 +30,10 @@ import {
   enqueueSyncMutation,
   dequeueSyncMutation,
   reconcileCloudWithPendingQueue,
+  getLastSyncTime,
   setLastSyncTime,
+  isAutoCloudBackupEnabled,
+  setAutoCloudBackupEnabled,
 } from './utils/offlineSync';
 import {
   APP_VERSION,
@@ -101,6 +104,12 @@ export const App: React.FC = () => {
     loadPendingSyncQueue()
   );
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const [lastBackupTime, setLastBackupTime] = useState<string | null>(() =>
+    getLastSyncTime()
+  );
+  const [autoCloudBackupEnabled, setAutoCloudBackupEnabledState] = useState<boolean>(() =>
+    isAutoCloudBackupEnabled()
+  );
   const isFlushingRef = useRef<boolean>(false);
 
   // App Version & In-App APK Auto-Update State
@@ -323,9 +332,11 @@ export const App: React.FC = () => {
         }
 
         if (flushedCount > 0) {
-          setLastSyncTime();
+          const nowIso = new Date().toISOString();
+          setLastSyncTime(nowIso);
+          setLastBackupTime(nowIso);
           showToast(
-            `☁️ ইন্টারনেট সংযোগে ${toBengaliNum(flushedCount)}টি অফলাইন কাজ স্বয়ংক্রিয়ভাবে আপলোড হয়েছে!`
+            `☁️ ইন্টারনেট সংযোগে ${toBengaliNum(flushedCount)}টি নতুন তথ্য ব্যাকআপ হয়েছে!`
           );
         }
       } finally {
@@ -362,12 +373,25 @@ export const App: React.FC = () => {
     };
   }, [flushOfflineQueue, showToast]);
 
-  // Trigger queue flush whenever online + user + pending items exist
+  // Trigger queue flush whenever online + user + pending items exist (if auto-backup is enabled)
   useEffect(() => {
-    if (isOnline && currentUser && pendingQueue.length > 0) {
+    if (isOnline && currentUser && pendingQueue.length > 0 && autoCloudBackupEnabled) {
       flushOfflineQueue(currentUser, isOnline);
     }
-  }, [isOnline, currentUser, pendingQueue.length, flushOfflineQueue]);
+  }, [isOnline, currentUser, pendingQueue.length, autoCloudBackupEnabled, flushOfflineQueue]);
+
+  const handleToggleAutoCloudBackup = useCallback(
+    (enabled: boolean) => {
+      setAutoCloudBackupEnabled(enabled);
+      setAutoCloudBackupEnabledState(enabled);
+      showToast(
+        enabled
+          ? '✓ অটো-ব্যাকআপ চালু করা হয়েছে'
+          : '👆 ম্যানুয়াল ব্যাকআপ মোড চালু ("এখনই ব্যাকআপ করুন" বাটনে ক্লিক করলে ব্যাকআপ হবে)'
+      );
+    },
+    [showToast]
+  );
 
   const handleToggleAutoUpdate = useCallback(
     (enabled: boolean) => {
@@ -713,7 +737,7 @@ export const App: React.FC = () => {
     }
   };
 
-  // Sync all local to cloud
+  // 1-Click Manual / Full Backup to Connected Gmail Cloud
   const handleSyncAllLocalToCloud = async () => {
     if (!currentUser) {
       setAuthInitialTab('google');
@@ -736,14 +760,16 @@ export const App: React.FC = () => {
     });
 
     if (!isOnline) {
-      showToast('💾 সব ডেটা অটো-সিঙ্ক কিউতে যুক্ত হয়েছে! ইন্টারনেট পেলেই আপলোড হবে।');
+      showToast('💾 সব নতুন তথ্য ব্যাকআপ কিউতে যুক্ত হয়েছে! ইন্টারনেট পেলেই আপলোড হবে।');
       return;
     }
 
-    showToast('সব ডাটা ক্লাউডে সিঙ্ক হচ্ছে...');
+    showToast('⏳ আপনার সংযুক্ত Gmail-এ নতুন তথ্য ব্যাকআপ হচ্ছে...');
     await flushOfflineQueue(currentUser, true);
-    showToast('✅ সফলভাবে ক্লাউডে সিঙ্ক হয়েছে! যে কোনো মোবাইলে দেখতে পাবেন।');
-    setIsAccountModalOpen(false);
+    const nowIso = new Date().toISOString();
+    setLastSyncTime(nowIso);
+    setLastBackupTime(nowIso);
+    showToast('✅ সফলভাবে ব্যাকআপ সম্পন্ন হয়েছে!');
   };
 
   // Simulate / Preview In-App Update Notification
@@ -961,6 +987,9 @@ export const App: React.FC = () => {
             isOnline={isOnline}
             pendingSyncCount={pendingQueue.length}
             isSyncing={isSyncing}
+            lastBackupTime={lastBackupTime}
+            autoCloudBackupEnabled={autoCloudBackupEnabled}
+            onToggleAutoCloudBackup={handleToggleAutoCloudBackup}
             updateInfo={updateInfo}
             isCheckingUpdate={isCheckingUpdate}
             autoUpdateEnabled={autoUpdateEnabled}
@@ -1055,14 +1084,21 @@ export const App: React.FC = () => {
         initialTab={authInitialTab}
       />
 
-      {/* Account Details Modal */}
+      {/* Account & 1-Click Backup Modal */}
       <AccountModal
         isOpen={isAccountModalOpen}
         onClose={() => setIsAccountModalOpen(false)}
         currentUser={currentUser}
+        customers={customers}
+        pendingSyncCount={pendingQueue.length}
+        isSyncing={isSyncing}
+        lastBackupTime={lastBackupTime}
+        autoCloudBackupEnabled={autoCloudBackupEnabled}
+        onToggleAutoCloudBackup={handleToggleAutoCloudBackup}
         onSyncAllToCloud={handleSyncAllLocalToCloud}
         onSwitchAccount={() => setIsAuthModalOpen(true)}
         onLogout={handleLogout}
+        onShowToast={showToast}
       />
 
       {/* In-App APK Auto-Update Modal */}

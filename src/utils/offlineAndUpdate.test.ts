@@ -166,4 +166,14 @@ test('pickNativeAndroidGoogleAccount resolves with the phone Gmail picked via na
   delete g.window.AndroidApkUpdater;
 });
 
+test('formatLastBackupTimeBn and isAutoCloudBackupEnabled handle 1-click backup states cleanly', async () => {
+  const { formatLastBackupTimeBn, isAutoCloudBackupEnabled } = await import('./offlineSync');
+  assert.equal(formatLastBackupTimeBn(null), 'এখনো ব্যাকআপ নেওয়া হয়নি');
+  const formatted = formatLastBackupTimeBn('2026-11-10T16:30:00.000Z');
+  assert.equal(typeof formatted, 'string');
+  assert.equal(formatted.length > 5, true);
+  assert.equal(isAutoCloudBackupEnabled(), true);
+});
+
+
 

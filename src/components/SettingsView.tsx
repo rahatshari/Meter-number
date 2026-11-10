@@ -4,6 +4,7 @@ import { Customer, ThemeMode } from '../types';
 import { toBengaliNum, isCustomerPaidThisMonth } from '../utils/bengali';
 import { AppUpdateInfo, triggerApkUpdateDownload } from '../utils/appUpdater';
 import { getCleanUserEmail } from '../utils/authHelpers';
+import { formatLastBackupTimeBn, shareBackupFileToGoogleDrive } from '../utils/offlineSync';
 import { UserAvatar } from './UserAvatar';
 
 interface SettingsViewProps {
@@ -12,6 +13,9 @@ interface SettingsViewProps {
   isOnline: boolean;
   pendingSyncCount: number;
   isSyncing: boolean;
+  lastBackupTime: string | null;
+  autoCloudBackupEnabled: boolean;
+  onToggleAutoCloudBackup: (enabled: boolean) => void;
   updateInfo: AppUpdateInfo;
   isCheckingUpdate: boolean;
   autoUpdateEnabled: boolean;
@@ -36,6 +40,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   isOnline,
   pendingSyncCount,
   isSyncing,
+  lastBackupTime,
+  autoCloudBackupEnabled,
+  onToggleAutoCloudBackup,
   updateInfo,
   isCheckingUpdate,
   autoUpdateEnabled,
@@ -61,7 +68,28 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   } | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [isBackingUpNow, setIsBackingUpNow] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleBackupNowClick = async () => {
+    setIsBackingUpNow(true);
+    try {
+      await onSyncAllLocalToCloud();
+    } finally {
+      setIsBackingUpNow(false);
+    }
+  };
+
+  const handleSaveToGoogleDriveApp = async () => {
+    const mode = await shareBackupFileToGoogleDrive(customers);
+    if (mode === 'native_drive') {
+      onShowToast('📂 Google Drive অ্যাপে ব্যাকআপ ফাইল সেভ করার অপশন চালু হয়েছে!');
+    } else if (mode === 'web_share') {
+      onShowToast('📂 Google Drive-এ ব্যাকআপ ফাইল শেয়ার সম্পন্ন হয়েছে!');
+    } else {
+      onShowToast('📥 Google Drive ব্যাকআপ ফাইল (.json) ডাউনলোড হয়েছে!');
+    }
+  };
 
   const handleFile = (file: File) => {
     if (!file) return;
@@ -230,93 +258,153 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   return (
     <div style={{ paddingBottom: '96px' }}>
-      {/* SECTION 1: Offline-First & Google Cloud Auto-Sync */}
+      {/* SECTION 1: WhatsApp-Style Google Drive & Cloud Backup Center */}
       <div className="md3-card" style={{ marginBottom: '16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
           <div
             style={{
-              width: '36px',
-              height: '36px',
-              borderRadius: '10px',
+              width: '38px',
+              height: '38px',
+              borderRadius: '11px',
               backgroundColor: 'var(--md-sys-color-primary-container)',
               color: 'var(--md-sys-color-primary)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              flexShrink: 0,
             }}
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
               <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z" />
             </svg>
           </div>
           <div>
             <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: 'var(--md-sys-color-on-surface)' }}>
-              অফলাইন ও ক্লাউড অটো-সিঙ্ক
+              Google Drive ও ক্লাউড ব্যাকআপ
             </h3>
             <p style={{ margin: 0, fontSize: '12px', color: 'var(--md-sys-color-on-surface-variant)' }}>
-              ইন্টারনেট ছাড়াও সচল · নেট পেলে স্বয়ংক্রিয় আপলোড
+              একবার Gmail যুক্ত করে রাখলে ১-ক্লিকেই সকল নতুন তথ্য ব্যাকআপ হবে
             </p>
           </div>
         </div>
 
-        {/* Real-time Offline Queue Status Box */}
+        {/* Backup Summary Box (Last Backup, Total Customers, Pending Changes) */}
         <div
           style={{
-            padding: '10px 12px',
+            padding: '12px',
             borderRadius: '12px',
-            backgroundColor: !isOnline
-              ? 'var(--md-sys-color-warning-container)'
-              : 'var(--md-sys-color-surface)',
-            border: '1px solid',
-            borderColor: !isOnline
-              ? 'var(--md-sys-color-warning)'
-              : 'var(--md-sys-color-outline-variant)',
+            backgroundColor: 'var(--md-sys-color-surface)',
+            border: '1px solid var(--md-sys-color-outline-variant)',
             marginBottom: '12px',
-            fontSize: '12px',
+            fontSize: '12.5px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '7px',
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ color: 'var(--md-sys-color-on-surface-variant)' }}>ব্যাকআপ Gmail অ্যাকাউন্ট:</span>
+            <strong
+              style={{
+                color: currentUser
+                  ? 'var(--md-sys-color-primary)'
+                  : 'var(--md-sys-color-on-surface-variant)',
+              }}
+            >
+              {currentUser ? getCleanUserEmail(currentUser) : 'যুক্ত করা হয়নি'}
+            </strong>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ color: 'var(--md-sys-color-on-surface-variant)' }}>সর্বশেষ ব্যাকআপ সময়:</span>
+            <strong style={{ color: 'var(--md-sys-color-on-surface)' }}>
+              {formatLastBackupTimeBn(lastBackupTime)}
+            </strong>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ color: 'var(--md-sys-color-on-surface-variant)' }}>মোট সংরক্ষিত গ্রাহক:</span>
+            <strong style={{ color: 'var(--md-sys-color-on-surface)' }}>
+              {toBengaliNum(customers.length)} জন গ্রাহক
+            </strong>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ color: 'var(--md-sys-color-on-surface-variant)' }}>নতুন পরিবর্তন:</span>
+            <span
+              style={{
+                fontSize: '11.5px',
+                fontWeight: 700,
+                padding: '2px 9px',
+                borderRadius: '999px',
+                backgroundColor:
+                  pendingSyncCount > 0
+                    ? 'var(--md-sys-color-warning-container)'
+                    : 'var(--md-sys-color-success-container)',
+                color:
+                  pendingSyncCount > 0
+                    ? 'var(--md-sys-color-warning)'
+                    : 'var(--md-sys-color-success)',
+              }}
+            >
+              {isSyncing
+                ? '⏳ ব্যাকআপ হচ্ছে...'
+                : pendingSyncCount > 0
+                ? `${toBengaliNum(pendingSyncCount)}টি নতুন তথ্য ব্যাকআপ বাকি`
+                : '✓ সব তথ্য ব্যাকআপ করা আছে'}
+            </span>
+          </div>
+        </div>
+
+        {/* Auto-Backup vs Manual 1-Click Backup Switch */}
+        <div
+          style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            gap: '8px',
+            gap: '10px',
+            padding: '10px 12px',
+            borderRadius: '12px',
+            backgroundColor: 'var(--md-sys-color-surface)',
+            border: '1px solid var(--md-sys-color-outline-variant)',
+            marginBottom: '12px',
           }}
         >
           <div>
-            <div
-              style={{
-                fontWeight: 700,
-                color: !isOnline
-                  ? 'var(--md-sys-color-on-warning-container)'
-                  : 'var(--md-sys-color-on-surface)',
-              }}
-            >
-              {isOnline ? '🌐 ইন্টারনেট সংযোগ সচল আছে' : '📴 ইন্টারনেট সংযোগ নেই (অফলাইন মোড)'}
+            <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--md-sys-color-on-surface)' }}>
+              ☁️ ব্যাকআপের ধরন (অটো / ম্যানুয়াল)
             </div>
             <div style={{ fontSize: '11px', color: 'var(--md-sys-color-on-surface-variant)', marginTop: '2px' }}>
-              {pendingSyncCount > 0
-                ? `${toBengaliNum(pendingSyncCount)}টি অফলাইন পরিবর্তন ক্লাউডে আপলোডের অপেক্ষায় রয়েছে`
-                : 'সকল গ্রাহক ও বিলের তথ্য ফোনে নিরাপদে সংরক্ষিত আছে'}
+              {autoCloudBackupEnabled
+                ? 'অটো চালু আছে — নতুন তথ্য যোগ করলেই স্বয়ংক্রিয়ভাবে ব্যাকআপ হবে'
+                : 'ম্যানুয়াল মোড — কিছুদিন পর পর "এখনই ব্যাকআপ করুন" বাটনে ক্লিক করলে ব্যাকআপ হবে'}
             </div>
           </div>
-          <span
+          <button
+            type="button"
+            role="switch"
+            aria-checked={autoCloudBackupEnabled}
+            onClick={() => onToggleAutoCloudBackup(!autoCloudBackupEnabled)}
             style={{
-              fontSize: '11px',
-              fontWeight: 700,
-              padding: '3px 9px',
+              padding: '6px 14px',
               borderRadius: '999px',
-              backgroundColor:
-                pendingSyncCount > 0
-                  ? 'var(--md-sys-color-warning)'
-                  : 'var(--md-sys-color-success-container)',
-              color:
-                pendingSyncCount > 0 ? '#FFFFFF' : 'var(--md-sys-color-success)',
+              border: '1.5px solid',
+              borderColor: autoCloudBackupEnabled
+                ? 'var(--md-sys-color-primary)'
+                : 'var(--md-sys-color-outline)',
+              backgroundColor: autoCloudBackupEnabled
+                ? 'var(--md-sys-color-primary)'
+                : 'var(--md-sys-color-surface-container)',
+              color: autoCloudBackupEnabled ? '#FFFFFF' : 'var(--md-sys-color-on-surface-variant)',
+              fontSize: '12px',
+              fontWeight: 700,
+              cursor: 'pointer',
               whiteSpace: 'nowrap',
+              flexShrink: 0,
             }}
           >
-            {isSyncing
-              ? 'আপলোড হচ্ছে...'
-              : pendingSyncCount > 0
-              ? `বাকি: ${toBengaliNum(pendingSyncCount)}`
-              : '✓ সিঙ্কড'}
-          </span>
+            {autoCloudBackupEnabled ? '✓ অটো চালু' : 'ম্যানুয়াল'}
+          </button>
         </div>
 
         {currentUser ? (
@@ -326,16 +414,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 display: 'flex',
                 alignItems: 'center',
                 gap: '12px',
-                padding: '12px',
+                padding: '10px 12px',
                 backgroundColor: 'var(--md-sys-color-surface)',
                 borderRadius: 'var(--md-shape-corner-md)',
-                marginBottom: '12px',
+                marginBottom: '10px',
                 border: '1px solid var(--md-sys-color-outline-variant)',
               }}
             >
-              <UserAvatar user={currentUser} size={46} showStatusDot={true} />
+              <UserAvatar user={currentUser} size={42} showStatusDot={true} />
               <div style={{ minWidth: 0, flex: 1 }}>
-                <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--md-sys-color-on-surface)' }} className="truncate">
+                <div style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--md-sys-color-on-surface)' }} className="truncate">
                   {currentUser.displayName && !currentUser.displayName.includes('+biddut')
                     ? currentUser.displayName
                     : getCleanUserEmail(currentUser).split('@')[0] || 'সম্মানিত ব্যবহারকারী'}
@@ -343,50 +431,82 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <div style={{ fontSize: '12px', color: 'var(--md-sys-color-on-surface-variant)' }} className="truncate">
                   {getCleanUserEmail(currentUser)}
                 </div>
-                <div style={{ fontSize: '11px', color: 'var(--md-sys-color-success)', fontWeight: 600, marginTop: '2px' }}>
-                  ✓ ফায়ারবেস ক্লাউড অটো-সিঙ্ক সক্রিয়
-                </div>
               </div>
+              <span
+                style={{
+                  fontSize: '10.5px',
+                  fontWeight: 700,
+                  padding: '3px 8px',
+                  borderRadius: '999px',
+                  backgroundColor: 'var(--md-sys-color-success-container)',
+                  color: 'var(--md-sys-color-success)',
+                  flexShrink: 0,
+                }}
+              >
+                ✓ সংযুক্ত
+              </span>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
+            {/* Big WhatsApp-Style 1-Click "Backup Now" Button */}
+            <button
+              type="button"
+              className="md3-btn-filled"
+              disabled={isBackingUpNow || isSyncing}
+              onClick={handleBackupNowClick}
+              style={{
+                width: '100%',
+                height: '46px',
+                fontSize: '14px',
+                fontWeight: 700,
+                marginBottom: '8px',
+              }}
+            >
+              {isBackingUpNow || isSyncing
+                ? '⏳ নতুন তথ্য ব্যাকআপ হচ্ছে...'
+                : pendingSyncCount > 0
+                ? `🔄 এখনই ব্যাকআপ করুন (${toBengaliNum(pendingSyncCount)}টি নতুন পরিবর্তন)`
+                : '🔄 এখনই ব্যাকআপ করুন (Backup Now)'}
+            </button>
+
+            <button
+              type="button"
+              className="md3-btn-tonal"
+              onClick={handleSaveToGoogleDriveApp}
+              style={{ width: '100%', padding: '10px 12px', fontSize: '13px', marginBottom: '8px' }}
+            >
+              📂 Google Drive অ্যাপে ব্যাকআপ ফাইল সেভ করুন
+            </button>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
               <button
                 type="button"
-                className="md3-btn-tonal"
-                style={{ padding: '10px 12px', fontSize: '13px' }}
-                onClick={onSyncAllLocalToCloud}
+                className="md3-btn-outlined"
+                style={{ padding: '9px 10px', fontSize: '12px' }}
+                onClick={onOpenAuthModal}
               >
-                ☁️ এখনই সিঙ্ক করুন
+                🔄 অন্য Gmail দিন
               </button>
 
               <button
                 type="button"
                 className="md3-btn-outlined"
-                style={{ padding: '10px 12px', fontSize: '13px' }}
-                onClick={onOpenAuthModal}
+                style={{ padding: '9px 10px', fontSize: '12px', color: 'var(--md-sys-color-error)', borderColor: 'var(--md-sys-color-error)' }}
+                onClick={onLogout}
               >
-                🔄 অন্য Gmail দিন
+                🚪 লগআউট করুন
               </button>
             </div>
-
-            <button
-              type="button"
-              className="md3-btn-outlined"
-              style={{ width: '100%', padding: '9px 12px', fontSize: '12.5px', color: 'var(--md-sys-color-error)', borderColor: 'var(--md-sys-color-error)' }}
-              onClick={onLogout}
-            >
-              🚪 লগআউট করুন
-            </button>
           </div>
         ) : (
           <div>
-            <p style={{ fontSize: '12.5px', color: 'var(--md-sys-color-on-surface-variant)', lineHeight: 1.5, marginBottom: '14px' }}>
-              অফলাইনে করা সকল কাজ ইন্টারনেট সংযোগ পাওয়ার সাথে সাথে স্বয়ংক্রিয়ভাবে ক্লাউডে আপলোড করতে আপনার Google বা ইমেইল অ্যাকাউন্ট দিয়ে লগইন করুন।
+            <p style={{ fontSize: '12.5px', color: 'var(--md-sys-color-on-surface-variant)', lineHeight: 1.5, marginBottom: '12px' }}>
+              একবার আপনার পছন্দের Gmail যুক্ত করে রাখুন। এরপর যখন খুশি এক ক্লিক দিলেই নতুন সব গ্রাহক ও বিলের হিসাব সেখানে ব্যাকআপ হয়ে যাবে।
             </p>
             <button
               type="button"
               className="md3-btn-filled"
               onClick={onOpenAuthModal}
+              style={{ marginBottom: '8px' }}
             >
               <svg width="18" height="18" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -394,7 +514,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
                 <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
               </svg>
-              Google / ইমেইল দিয়ে লগইন করুন
+              ব্যাকআপের জন্য Gmail অ্যাকাউন্ট যুক্ত করুন
+            </button>
+
+            <button
+              type="button"
+              className="md3-btn-tonal"
+              onClick={handleSaveToGoogleDriveApp}
+              style={{ width: '100%', padding: '10px 12px', fontSize: '13px' }}
+            >
+              📂 সরাসরি Google Drive অ্যাপে ফাইল সেভ করুন
             </button>
           </div>
         )}

@@ -281,6 +281,52 @@ public class MainActivity extends BridgeActivity {
         }).start();
     }
 
+    private void shareJsonToGoogleDrive(final String jsonContent, final String fileName) {
+        runOnUiThread(() -> {
+            FileOutputStream fos = null;
+            try {
+                String safeName = (fileName == null || fileName.trim().isEmpty())
+                    ? "Biddut_Bill_Backup.json"
+                    : fileName.trim();
+                File backupFile = new File(getCacheDir(), safeName);
+                fos = new FileOutputStream(backupFile);
+                fos.write((jsonContent == null ? "{}" : jsonContent).getBytes("UTF-8"));
+                fos.flush();
+                fos.close();
+                fos = null;
+
+                Uri fileUri = FileProvider.getUriForFile(
+                    MainActivity.this,
+                    getPackageName() + ".fileprovider",
+                    backupFile
+                );
+
+                // First try opening the official Google Drive app's "Save to Drive" screen directly
+                Intent driveIntent = new Intent(Intent.ACTION_SEND);
+                driveIntent.setType("application/json");
+                driveIntent.putExtra(Intent.EXTRA_STREAM, fileUri);
+                driveIntent.putExtra(Intent.EXTRA_SUBJECT, safeName);
+                driveIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                driveIntent.setPackage("com.google.android.apps.docs");
+
+                try {
+                    startActivity(driveIntent);
+                } catch (Exception notInstalled) {
+                    // Fallback to system share sheet so user can pick Drive or any cloud storage app
+                    Intent chooserIntent = new Intent(Intent.ACTION_SEND);
+                    chooserIntent.setType("application/json");
+                    chooserIntent.putExtra(Intent.EXTRA_STREAM, fileUri);
+                    chooserIntent.putExtra(Intent.EXTRA_SUBJECT, safeName);
+                    chooserIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                    startActivity(Intent.createChooser(chooserIntent, "Google Drive-এ ব্যাকআপ সেভ করুন"));
+                }
+            } catch (Exception ignored) {
+            } finally {
+                try { if (fos != null) fos.close(); } catch (Exception ignored) {}
+            }
+        });
+    }
+
     public class AndroidApkUpdater {
         @JavascriptInterface
         public boolean isNativeApk() {
@@ -290,6 +336,11 @@ public class MainActivity extends BridgeActivity {
         @JavascriptInterface
         public void pickGoogleAccount() {
             startNativeGoogleAccountPicker();
+        }
+
+        @JavascriptInterface
+        public void saveBackupToGoogleDrive(String jsonContent, String fileName) {
+            shareJsonToGoogleDrive(jsonContent, fileName);
         }
 
         @JavascriptInterface
