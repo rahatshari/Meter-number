@@ -4,7 +4,8 @@ import { Customer, ThemeMode } from '../types';
 import { toBengaliNum, isCustomerPaidThisMonth } from '../utils/bengali';
 import { AppUpdateInfo, triggerApkUpdateDownload } from '../utils/appUpdater';
 import { getCleanUserEmail } from '../utils/authHelpers';
-import { formatLastBackupTimeBn, shareBackupFileToGoogleDrive } from '../utils/offlineSync';
+import { formatLastBackupTimeBn } from '../utils/offlineSync';
+import { DRIVE_BACKUP_FILENAME } from '../utils/googleDriveBackup';
 import { UserAvatar } from './UserAvatar';
 
 interface SettingsViewProps {
@@ -24,6 +25,9 @@ interface SettingsViewProps {
   onOpenAuthModal: () => void;
   onLogout: () => Promise<void>;
   onSyncAllLocalToCloud: () => Promise<void>;
+  onConnectGoogleDriveWithEmail: (email: string) => Promise<number>;
+  onConnectGoogleDriveOAuthPopup: (hintEmail?: string) => Promise<number>;
+  onRestoreFromGoogleDrive: () => Promise<number>;
   onCheckForUpdate: () => Promise<void>;
   onOpenUpdateModal: () => void;
   onSimulateUpdateNotification: () => void;
@@ -51,6 +55,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onOpenAuthModal,
   onLogout,
   onSyncAllLocalToCloud,
+  onConnectGoogleDriveWithEmail,
+  onConnectGoogleDriveOAuthPopup,
+  onRestoreFromGoogleDrive,
   onCheckForUpdate,
   onOpenUpdateModal,
   onSimulateUpdateNotification,
@@ -69,25 +76,32 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [isImporting, setIsImporting] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isBackingUpNow, setIsBackingUpNow] = useState(false);
+  const [isRestoringDrive, setIsRestoringDrive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleBackupNowClick = async () => {
-    setIsBackingUpNow(true);
-    try {
-      await onSyncAllLocalToCloud();
-    } finally {
-      setIsBackingUpNow(false);
-    }
+  const handleBackupNowClick = () => {
+    const cleanEmail = currentUser ? getCleanUserEmail(currentUser) : '';
+    onShowConfirm(
+      'Google Drive-এ ব্যাকআপ সংরক্ষণ নিশ্চিত করুন',
+      `আপনার সংযুক্ত Google Drive (${cleanEmail || 'Gmail'})-এর '${DRIVE_BACKUP_FILENAME}' ফাইলে বর্তমান ${toBengaliNum(customers.length)} জন গ্রাহকের সকল তথ্য ব্যাকআপ ও আপডেট করা হবে। আপনি কি অনুমতি দিচ্ছেন?`,
+      '✓ হ্যাঁ, ব্যাকআপ রাখুন',
+      async () => {
+        setIsBackingUpNow(true);
+        try {
+          await onSyncAllLocalToCloud();
+        } finally {
+          setIsBackingUpNow(false);
+        }
+      }
+    );
   };
 
-  const handleSaveToGoogleDriveApp = async () => {
-    const mode = await shareBackupFileToGoogleDrive(customers);
-    if (mode === 'native_drive') {
-      onShowToast('📂 Google Drive অ্যাপে ব্যাকআপ ফাইল সেভ করার অপশন চালু হয়েছে!');
-    } else if (mode === 'web_share') {
-      onShowToast('📂 Google Drive-এ ব্যাকআপ ফাইল শেয়ার সম্পন্ন হয়েছে!');
-    } else {
-      onShowToast('📥 Google Drive ব্যাকআপ ফাইল (.json) ডাউনলোড হয়েছে!');
+  const handleRestoreFromDriveClick = async () => {
+    setIsRestoringDrive(true);
+    try {
+      await onRestoreFromGoogleDrive();
+    } finally {
+      setIsRestoringDrive(false);
     }
   };
 
@@ -258,37 +272,42 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   return (
     <div style={{ paddingBottom: '96px' }}>
-      {/* SECTION 1: WhatsApp-Style Google Drive & Cloud Backup Center */}
+      {/* SECTION 1: Google Drive Backup & Auto-Restore Setup (Gmail -> Drive Access -> Backup & Reinstall Restore) */}
       <div className="md3-card" style={{ marginBottom: '16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
           <div
             style={{
-              width: '38px',
-              height: '38px',
-              borderRadius: '11px',
+              width: '40px',
+              height: '40px',
+              borderRadius: '12px',
               backgroundColor: 'var(--md-sys-color-primary-container)',
-              color: 'var(--md-sys-color-primary)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               flexShrink: 0,
             }}
           >
-            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-              <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z" />
+            {/* Official Google Drive 3-color triangle icon */}
+            <svg width="24" height="24" viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg">
+              <path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/>
+              <path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0 -1.2 4.5h27.5z" fill="#00ac47"/>
+              <path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.502l5.852 11.5z" fill="#ea4335"/>
+              <path d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/>
+              <path d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/>
+              <path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 28h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/>
             </svg>
           </div>
           <div>
             <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: 'var(--md-sys-color-on-surface)' }}>
-              Google Drive ও ক্লাউড ব্যাকআপ
+              Google Drive ব্যাকআপ ও রিস্টোর
             </h3>
             <p style={{ margin: 0, fontSize: '12px', color: 'var(--md-sys-color-on-surface-variant)' }}>
-              একবার Gmail যুক্ত করে রাখলে ১-ক্লিকেই সকল নতুন তথ্য ব্যাকআপ হবে
+              Gmail দিয়ে Google Drive অ্যাক্সেস নিলে সব তথ্য ব্যাকআপ থাকবে এবং অ্যাপ পুনরায় ইনস্টল করলে ফিরে আসবে
             </p>
           </div>
         </div>
 
-        {/* Backup Summary Box (Last Backup, Total Customers, Pending Changes) */}
+        {/* Backup Summary Box */}
         <div
           style={{
             padding: '12px',
@@ -303,7 +322,27 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ color: 'var(--md-sys-color-on-surface-variant)' }}>ব্যাকআপ Gmail অ্যাকাউন্ট:</span>
+            <span style={{ color: 'var(--md-sys-color-on-surface-variant)' }}>Google Drive অ্যাক্সেস:</span>
+            <span
+              style={{
+                fontSize: '11.5px',
+                fontWeight: 700,
+                padding: '2px 9px',
+                borderRadius: '999px',
+                backgroundColor: currentUser
+                  ? 'var(--md-sys-color-success-container)'
+                  : 'var(--md-sys-color-warning-container)',
+                color: currentUser
+                  ? 'var(--md-sys-color-success)'
+                  : 'var(--md-sys-color-warning)',
+              }}
+            >
+              {currentUser ? '✓ অ্যাক্সেস সক্রিয় ও সংযুক্ত' : 'অ্যাক্সেস নেওয়া হয়নি'}
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ color: 'var(--md-sys-color-on-surface-variant)' }}>সংযুক্ত Gmail:</span>
             <strong
               style={{
                 color: currentUser
@@ -316,6 +355,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ color: 'var(--md-sys-color-on-surface-variant)' }}>ড্রাইভ ব্যাকআপ ফাইল:</span>
+            <strong style={{ color: 'var(--md-sys-color-on-surface)', fontSize: '11.5px' }}>
+              {DRIVE_BACKUP_FILENAME}
+            </strong>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ color: 'var(--md-sys-color-on-surface-variant)' }}>সর্বশেষ ব্যাকআপ সময়:</span>
             <strong style={{ color: 'var(--md-sys-color-on-surface)' }}>
               {formatLastBackupTimeBn(lastBackupTime)}
@@ -323,8 +369,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ color: 'var(--md-sys-color-on-surface-variant)' }}>মোট সংরক্ষিত গ্রাহক:</span>
-            <strong style={{ color: 'var(--md-sys-color-on-surface)' }}>
+            <span style={{ color: 'var(--md-sys-color-on-surface-variant)' }}>মোট ব্যাকআপকৃত গ্রাহক:</span>
+            <strong style={{ color: 'var(--md-sys-color-primary)' }}>
               {toBengaliNum(customers.length)} জন গ্রাহক
             </strong>
           </div>
@@ -376,8 +422,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </div>
             <div style={{ fontSize: '11px', color: 'var(--md-sys-color-on-surface-variant)', marginTop: '2px' }}>
               {autoCloudBackupEnabled
-                ? 'অটো চালু আছে — নতুন তথ্য যোগ করলেই স্বয়ংক্রিয়ভাবে ব্যাকআপ হবে'
-                : 'ম্যানুয়াল মোড — কিছুদিন পর পর "এখনই ব্যাকআপ করুন" বাটনে ক্লিক করলে ব্যাকআপ হবে'}
+                ? 'অটো চালু আছে — নতুন তথ্য যোগ করলেই স্বয়ংক্রিয়ভাবে Google Drive-এ ব্যাকআপ হবে'
+                : 'ম্যানুয়াল মোড — যখন খুশি "এখনই ব্যাকআপ রাখুন" বাটনে ক্লিক করলে ব্যাকআপ হবে'}
             </div>
           </div>
           <button
@@ -407,7 +453,41 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </button>
         </div>
 
-        {currentUser ? (
+        {!currentUser && (
+          <div
+            style={{
+              padding: '14px',
+              borderRadius: '14px',
+              backgroundColor: 'var(--md-sys-color-surface)',
+              border: '1px solid var(--md-sys-color-outline-variant)',
+              marginBottom: '12px',
+              textAlign: 'center',
+            }}
+          >
+            <p style={{ margin: '0 0 10px', fontSize: '12.5px', color: 'var(--md-sys-color-on-surface-variant)' }}>
+              Google Drive ব্যাকআপ ও রিস্টোর ব্যবহারের জন্য আপনার Gmail বা আইডি দিয়ে সাইন ইন করুন
+            </p>
+            <button
+              type="button"
+              className="md3-btn-filled"
+              onClick={onOpenAuthModal}
+              style={{
+                width: '100%',
+                height: '42px',
+                fontSize: '13px',
+                fontWeight: 700,
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+              }}
+            >
+              <span>🔑 Google Drive ব্যাকআপের জন্য সাইন ইন করুন</span>
+            </button>
+          </div>
+        )}
+
+        {currentUser && (
           <div>
             <div
               style={{
@@ -443,11 +523,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   flexShrink: 0,
                 }}
               >
-                ✓ সংযুক্ত
+                ✓ Drive সংযুক্ত
               </span>
             </div>
 
-            {/* Big WhatsApp-Style 1-Click "Backup Now" Button */}
+            {/* 1. Primary "Backup All Uploaded Data to Google Drive Now" Button */}
             <button
               type="button"
               className="md3-btn-filled"
@@ -462,19 +542,23 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               }}
             >
               {isBackingUpNow || isSyncing
-                ? '⏳ নতুন তথ্য ব্যাকআপ হচ্ছে...'
+                ? '⏳ Google Drive-এ ব্যাকআপ হচ্ছে...'
                 : pendingSyncCount > 0
-                ? `🔄 এখনই ব্যাকআপ করুন (${toBengaliNum(pendingSyncCount)}টি নতুন পরিবর্তন)`
-                : '🔄 এখনই ব্যাকআপ করুন (Backup Now)'}
+                ? `☁️ Google Drive-এ এখনই ব্যাকআপ রাখুন (${toBengaliNum(pendingSyncCount)}টি নতুন)`
+                : '☁️ Google Drive-এ এখনই ব্যাকআপ রাখুন (Backup Now)'}
             </button>
 
+            {/* 2. "Restore All Data from Google Drive" Button */}
             <button
               type="button"
               className="md3-btn-tonal"
-              onClick={handleSaveToGoogleDriveApp}
-              style={{ width: '100%', padding: '10px 12px', fontSize: '13px', marginBottom: '8px' }}
+              disabled={isRestoringDrive || isSyncing}
+              onClick={handleRestoreFromDriveClick}
+              style={{ width: '100%', padding: '10px 12px', fontSize: '13px', fontWeight: 700, marginBottom: '8px' }}
             >
-              📂 Google Drive অ্যাপে ব্যাকআপ ফাইল সেভ করুন
+              {isRestoringDrive
+                ? '⏳ Google Drive থেকে তথ্য অ্যাপে আসছে...'
+                : '📥 Google Drive থেকে সব তথ্য অ্যাপে আনুন (Restore)'}
             </button>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
@@ -484,7 +568,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 style={{ padding: '9px 10px', fontSize: '12px' }}
                 onClick={onOpenAuthModal}
               >
-                🔄 অন্য Gmail দিন
+                🔄 অন্য অ্যাকাউন্ট
               </button>
 
               <button
@@ -497,37 +581,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </button>
             </div>
           </div>
-        ) : (
-          <div>
-            <p style={{ fontSize: '12.5px', color: 'var(--md-sys-color-on-surface-variant)', lineHeight: 1.5, marginBottom: '12px' }}>
-              একবার আপনার পছন্দের Gmail যুক্ত করে রাখুন। এরপর যখন খুশি এক ক্লিক দিলেই নতুন সব গ্রাহক ও বিলের হিসাব সেখানে ব্যাকআপ হয়ে যাবে।
-            </p>
-            <button
-              type="button"
-              className="md3-btn-filled"
-              onClick={onOpenAuthModal}
-              style={{ marginBottom: '8px' }}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24">
-                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
-                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
-              </svg>
-              ব্যাকআপের জন্য Gmail অ্যাকাউন্ট যুক্ত করুন
-            </button>
-
-            <button
-              type="button"
-              className="md3-btn-tonal"
-              onClick={handleSaveToGoogleDriveApp}
-              style={{ width: '100%', padding: '10px 12px', fontSize: '13px' }}
-            >
-              📂 সরাসরি Google Drive অ্যাপে ফাইল সেভ করুন
-            </button>
-          </div>
         )}
       </div>
+
 
       {/* SECTION 2: APK Auto-Update & Release Hub */}
       <div className="md3-card" style={{ marginBottom: '16px' }}>

@@ -12,12 +12,30 @@ import {
 import firebaseConfig from '../firebase-applet-config.json';
 import { OperationType, FirestoreErrorInfo } from './types';
 
-const app = initializeApp(firebaseConfig);
+// Primary database & auth config (electric-20c05) where the user's live customer records are stored
+const primaryFirebaseConfig = {
+  projectId: 'electric-20c05',
+  appId: '1:642666694691:web:b496aa83d01ceef65d8996',
+  apiKey: 'AIzaSyBgVUNfPvuda_A6u3amqWoiu2s0nhY4rQE',
+  authDomain: 'electric-20c05.firebaseapp.com',
+  firestoreDatabaseId: '(default)',
+  storageBucket: 'electric-20c05.firebasestorage.app',
+  messagingSenderId: '642666694691',
+  measurementId: '',
+  oAuthClientId: '642666694691-7jdcvl05jek4drlr0is8ft79immhsrrq.apps.googleusercontent.com',
+  recaptchaSiteKey: '',
+};
+
+const app = initializeApp(primaryFirebaseConfig);
+
+// Secondary Firebase app instance using firebase-applet-config.json for Google Drive Workspace OAuth scopes
+const driveOAuthApp = initializeApp(firebaseConfig, 'google-drive-workspace-oauth');
 
 function createOfflineReadyFirestore(): Firestore {
   const dbId =
-    firebaseConfig.firestoreDatabaseId && firebaseConfig.firestoreDatabaseId !== '(default)'
-      ? firebaseConfig.firestoreDatabaseId
+    primaryFirebaseConfig.firestoreDatabaseId &&
+    primaryFirebaseConfig.firestoreDatabaseId !== '(default)'
+      ? primaryFirebaseConfig.firestoreDatabaseId
       : undefined;
   try {
     return dbId
@@ -42,6 +60,8 @@ function createOfflineReadyFirestore(): Firestore {
 
 export const db = createOfflineReadyFirestore();
 export const auth = getAuth(app);
+export const driveAuth = getAuth(driveOAuthApp);
+
 
 // Validate Connection to Firestore when online (Per SKILL.md)
 async function testConnection() {

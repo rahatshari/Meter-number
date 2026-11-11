@@ -1,12 +1,11 @@
 {
-  "projectId": "electric-20c05",
-  "appId": "1:642666694691:web:b496aa83d01ceef65d8996",
-  "apiKey": "AIzaSyBgVUNfPvuda_A6u3amqWoiu2s0nhY4rQE",
-  "authDomain": "electric-20c05.firebaseapp.com",
-  "firestoreDatabaseId": "(default)",
-  "storageBucket": "electric-20c05.firebasestorage.app",
-  "messagingSenderId": "642666694691",
+  "projectId": "gen-lang-client-0750697097",
+  "appId": "1:410622297498:web:45d0148acc7f475d086623",
+  "apiKey": "AIzaSyCtYs3iyuZOGcgY2YsY_XO-quMvSTjBhnQ",
+  "authDomain": "gen-lang-client-0750697097.firebaseapp.com",
+  "storageBucket": "gen-lang-client-0750697097.firebasestorage.app",
+  "messagingSenderId": "410622297498",
   "measurementId": "",
-  "oAuthClientId": "642666694691-7jdcvl05jek4drlr0is8ft79immhsrrq.apps.googleusercontent.com",
+  "oAuthClientId": "410622297498-hmepqo2r8vnktaksplqh2gbjesbciu0r.apps.googleusercontent.com",
   "recaptchaSiteKey": ""
 }

@@ -22,14 +22,48 @@ export function normalizeGmailInput(input: string): string {
 }
 
 /**
- * Formats a Firebase user's email for display, stripping any internal "+biddut" sync suffix.
+ * Formats a Firebase user's email for display, stripping any internal "+biddut..." sync suffix.
  */
 export function getCleanUserEmail(
   user: { email?: string | null; displayName?: string | null } | null | undefined
 ): string {
   if (!user) return '';
-  const raw = user.email || '';
-  return raw.replace(/\+biddut(\d*)@/i, '@');
+  const raw = (user.email || '').trim().toLowerCase();
+  return raw.replace(/\+biddut([a-z0-9_]*)@/i, '@');
+}
+
+/**
+ * Returns a canonical Firestore user bucket key derived from the user's clean Gmail/email address.
+ * Guarantees that logging in via Google Account ("Continue with Google") and logging in via
+ * ID & Password ("লগইন করুন") with the same Gmail ALWAYS read and write the exact same Firestore data!
+ */
+export function getSharedAccountKey(
+  user: { uid: string; email?: string | null; displayName?: string | null } | null | undefined
+): string {
+  if (!user) return '';
+  const cleanEmail = getCleanUserEmail(user);
+  if (cleanEmail && cleanEmail.includes('@')) {
+    return `acct_${cleanEmail.replace(/[^a-z0-9]/g, '_')}`;
+  }
+  return user.uid;
+}
+
+/**
+ * Returns legacy UID buckets associated with this user so existing UID-keyed records
+ * are automatically migrated and kept in sync across both Google login and ID/Password login.
+ */
+export function getLegacyMirrorKeysForUser(
+  user: { uid: string; email?: string | null; displayName?: string | null } | null | undefined
+): string[] {
+  if (!user) return [];
+  const keys = new Set<string>([user.uid]);
+  const cleanEmail = getCleanUserEmail(user);
+  if (cleanEmail === 'rahatsharif10448@gmail.com') {
+    keys.add('zHb7bQNqDfcDutkSKB3GCohaUuz2');
+    keys.add('xnqMg1msvZdxwAWb9C6cCj0MBdW2');
+    keys.add('WmeP8OzuapeQGKyyctvPEevaLBH3');
+  }
+  return Array.from(keys);
 }
 
 /**
@@ -359,22 +393,60 @@ export async function loginWithJustEmail(
               resolvedEmail: cleanEmail,
             };
           } catch {
-            const aliasCreateResult = await createUserWithEmailAndPassword(
-              auth,
-              aliasEmail,
-              targetPassword
-            );
             try {
-              await updateProfile(aliasCreateResult.user, { displayName: localPart });
-            } catch {
-              // ignore
+              const aliasCreateResult = await createUserWithEmailAndPassword(
+                auth,
+                aliasEmail,
+                targetPassword
+              );
+              try {
+                await updateProfile(aliasCreateResult.user, { displayName: localPart });
+              } catch {
+                // ignore
+              }
+              recordSavedGmailAccount(cleanEmail);
+              return {
+                credential: aliasCreateResult,
+                isNewUser: true,
+                resolvedEmail: cleanEmail,
+              };
+            } catch (aliasCreateErr: any) {
+              if (aliasCreateErr?.code === 'auth/email-already-in-use') {
+                // Both primary and +biddut have custom passwords; use +biddut_google alias
+                const googleAliasEmail = `${localPart}+biddut_google@${domainPart}`;
+                try {
+                  const gLogin = await signInWithEmailAndPassword(
+                    auth,
+                    googleAliasEmail,
+                    targetPassword
+                  );
+                  recordSavedGmailAccount(cleanEmail);
+                  return {
+                    credential: gLogin,
+                    isNewUser: false,
+                    resolvedEmail: cleanEmail,
+                  };
+                } catch {
+                  const gCreate = await createUserWithEmailAndPassword(
+                    auth,
+                    googleAliasEmail,
+                    targetPassword
+                  );
+                  try {
+                    await updateProfile(gCreate.user, { displayName: localPart });
+                  } catch {
+                    // ignore
+                  }
+                  recordSavedGmailAccount(cleanEmail);
+                  return {
+                    credential: gCreate,
+                    isNewUser: true,
+                    resolvedEmail: cleanEmail,
+                  };
+                }
+              }
+              throw aliasCreateErr;
             }
-            recordSavedGmailAccount(cleanEmail);
-            return {
-              credential: aliasCreateResult,
-              isNewUser: true,
-              resolvedEmail: cleanEmail,
-            };
           }
         }
         throw createErr;

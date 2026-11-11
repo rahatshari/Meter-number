@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { User } from 'firebase/auth';
 import { Customer } from '../types';
 import { UserAvatar } from './UserAvatar';
-import { getCleanUserEmail } from '../utils/authHelpers';
+import { getCleanUserEmail, normalizeGmailInput } from '../utils/authHelpers';
 import { toBengaliNum } from '../utils/bengali';
-import { formatLastBackupTimeBn, shareBackupFileToGoogleDrive } from '../utils/offlineSync';
+import { formatLastBackupTimeBn } from '../utils/offlineSync';
+import { DRIVE_BACKUP_FILENAME } from '../utils/googleDriveBackup';
 
 interface AccountModalProps {
   isOpen: boolean;
@@ -17,9 +18,12 @@ interface AccountModalProps {
   autoCloudBackupEnabled: boolean;
   onToggleAutoCloudBackup: (enabled: boolean) => void;
   onSyncAllToCloud: () => Promise<void>;
+  onRestoreFromGoogleDrive: () => Promise<number>;
+  onConnectGoogleDriveWithEmail: (email: string) => Promise<number>;
   onSwitchAccount?: () => void;
   onLogout: () => Promise<void>;
   onShowToast: (msg: string) => void;
+  onShowConfirm: (title: string, message: string, okText: string, onOk: () => void) => void;
 }
 
 export const AccountModal: React.FC<AccountModalProps> = ({
@@ -33,11 +37,17 @@ export const AccountModal: React.FC<AccountModalProps> = ({
   autoCloudBackupEnabled,
   onToggleAutoCloudBackup,
   onSyncAllToCloud,
-  onSwitchAccount,
+  onRestoreFromGoogleDrive,
+  onConnectGoogleDriveWithEmail,
   onLogout,
   onShowToast,
+  onShowConfirm,
 }) => {
   const [isBackingUpNow, setIsBackingUpNow] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
+  const [showSwitchGmailInput, setShowSwitchGmailInput] = useState(false);
+  const [newGmail, setNewGmail] = useState('');
+  const [isSwitching, setIsSwitching] = useState(false);
 
   if (!isOpen || !currentUser) return null;
 
@@ -47,23 +57,45 @@ export const AccountModal: React.FC<AccountModalProps> = ({
       ? currentUser.displayName
       : cleanEmail.split('@')[0] || 'সম্মানিত ব্যবহারকারী';
 
-  const handleBackupNowClick = async () => {
-    setIsBackingUpNow(true);
+  const handleBackupNowClick = () => {
+    onShowConfirm(
+      'Google Drive-এ ব্যাকআপ সংরক্ষণ নিশ্চিত করুন',
+      `আপনার সংযুক্ত Google Drive (${cleanEmail})-এর '${DRIVE_BACKUP_FILENAME}' ফাইলে বর্তমান ${toBengaliNum(customers.length)} জন গ্রাহকের সকল তথ্য ব্যাকআপ ও আপডেট করা হবে। আপনি কি নিশ্চিত?`,
+      '✓ হ্যাঁ, ব্যাকআপ রাখুন',
+      async () => {
+        setIsBackingUpNow(true);
+        try {
+          await onSyncAllToCloud();
+        } finally {
+          setIsBackingUpNow(false);
+        }
+      }
+    );
+  };
+
+  const handleRestoreClick = async () => {
+    setIsRestoring(true);
     try {
-      await onSyncAllToCloud();
+      await onRestoreFromGoogleDrive();
     } finally {
-      setIsBackingUpNow(false);
+      setIsRestoring(false);
     }
   };
 
-  const handleDriveFileSave = async () => {
-    const mode = await shareBackupFileToGoogleDrive(customers);
-    if (mode === 'native_drive') {
-      onShowToast('📂 Google Drive অ্যাপে ব্যাকআপ ফাইল সেভ করার অপশন চালু হয়েছে!');
-    } else if (mode === 'web_share') {
-      onShowToast('📂 Google Drive-এ ব্যাকআপ ফাইল শেয়ার সম্পন্ন হয়েছে!');
-    } else {
-      onShowToast('📥 Google Drive ব্যাকআপ ফাইল (.json) ডাউনলোড হয়েছে!');
+  const handleSwitchGmailSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const clean = normalizeGmailInput(newGmail);
+    if (!clean || !clean.includes('@')) {
+      onShowToast('সঠিক Gmail ঠিকানা লিখুন');
+      return;
+    }
+    setIsSwitching(true);
+    try {
+      await onConnectGoogleDriveWithEmail(clean);
+      setShowSwitchGmailInput(false);
+      setNewGmail('');
+    } finally {
+      setIsSwitching(false);
     }
   };
 
@@ -73,6 +105,9 @@ export const AccountModal: React.FC<AccountModalProps> = ({
         className="md3-sheet"
         style={{ maxWidth: '430px', maxHeight: '92vh', overflowY: 'auto' }}
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="account-modal-title"
       >
         <div className="md3-drag-handle" />
 
@@ -82,7 +117,7 @@ export const AccountModal: React.FC<AccountModalProps> = ({
             <UserAvatar user={currentUser} size={62} showStatusDot={true} />
           </div>
 
-          <h3 style={{ margin: '0 0 2px', fontSize: '17px', fontWeight: 700, color: 'var(--md-sys-color-on-surface)' }}>
+          <h3 id="account-modal-title" style={{ margin: '0 0 2px', fontSize: '17px', fontWeight: 700, color: 'var(--md-sys-color-on-surface)' }}>
             {displayName}
           </h3>
           <p style={{ margin: 0, fontSize: '12.5px', color: 'var(--md-sys-color-on-surface-variant)', wordBreak: 'break-all' }}>
@@ -100,11 +135,11 @@ export const AccountModal: React.FC<AccountModalProps> = ({
               color: 'var(--md-sys-color-success)',
             }}
           >
-            ✓ ব্যাকআপ Gmail যুক্ত আছে
+            ✓ Google Drive অ্যাক্সেস ও ব্যাকআপ সক্রিয়
           </span>
         </div>
 
-        {/* WhatsApp-Style Backup Details Card */}
+        {/* Google Drive Backup Details Card */}
         <div
           style={{
             backgroundColor: 'var(--md-sys-color-surface)',
@@ -119,6 +154,13 @@ export const AccountModal: React.FC<AccountModalProps> = ({
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ color: 'var(--md-sys-color-on-surface-variant)' }}>ড্রাইভ ব্যাকআপ ফাইল:</span>
+            <strong style={{ color: 'var(--md-sys-color-on-surface)', fontSize: '11.5px' }}>
+              {DRIVE_BACKUP_FILENAME}
+            </strong>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ color: 'var(--md-sys-color-on-surface-variant)' }}>সর্বশেষ ব্যাকআপ:</span>
             <strong style={{ color: 'var(--md-sys-color-on-surface)', textAlign: 'right' }}>
               {formatLastBackupTimeBn(lastBackupTime)}
@@ -126,7 +168,7 @@ export const AccountModal: React.FC<AccountModalProps> = ({
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ color: 'var(--md-sys-color-on-surface-variant)' }}>মোট সংরক্ষিত গ্রাহক:</span>
+            <span style={{ color: 'var(--md-sys-color-on-surface-variant)' }}>মোট ব্যাকআপকৃত গ্রাহক:</span>
             <strong style={{ color: 'var(--md-sys-color-primary)' }}>
               {toBengaliNum(customers.length)} জন গ্রাহক
             </strong>
@@ -169,8 +211,8 @@ export const AccountModal: React.FC<AccountModalProps> = ({
             </div>
             <div style={{ fontSize: '11px', color: 'var(--md-sys-color-on-surface-variant)', marginTop: '2px' }}>
               {autoCloudBackupEnabled
-                ? 'চালু আছে — নতুন তথ্য যোগ করলেই স্বয়ংক্রিয় ব্যাকআপ হবে'
-                : 'ম্যানুয়াল — "এখনই ব্যাকআপ করুন" বাটনে ক্লিক করলে ব্যাকআপ হবে'}
+                ? 'চালু আছে — নতুন তথ্য যোগ করলেই স্বয়ংক্রিয়ভাবে Google Drive-এ ব্যাকআপ হবে'
+                : 'ম্যানুয়াল — "এখনই ব্যাকআপ রাখুন" বাটনে ক্লিক করলে ব্যাকআপ হবে'}
             </div>
           </div>
           <button
@@ -200,7 +242,43 @@ export const AccountModal: React.FC<AccountModalProps> = ({
           </button>
         </div>
 
-        {/* Primary 1-Click Backup Actions */}
+        {/* Inline Switch Gmail / Restore from Another Gmail Box */}
+        {showSwitchGmailInput && (
+          <form
+            onSubmit={handleSwitchGmailSubmit}
+            style={{
+              padding: '12px',
+              borderRadius: '12px',
+              backgroundColor: 'var(--md-sys-color-surface)',
+              border: '1.5px solid var(--md-sys-color-primary)',
+              marginBottom: '12px',
+            }}
+          >
+            <div className="md3-text-field" style={{ marginBottom: '8px' }}>
+              <label htmlFor="account-switch-gmail">অন্য Gmail ঠিকানা বসান *</label>
+              <input
+                id="account-switch-gmail"
+                type="text"
+                inputMode="email"
+                autoCapitalize="none"
+                className="md3-input"
+                placeholder="যেমন: example@gmail.com"
+                value={newGmail}
+                onChange={(e) => setNewGmail(e.target.value)}
+              />
+            </div>
+            <button
+              type="submit"
+              className="md3-btn-filled"
+              disabled={isSwitching}
+              style={{ width: '100%', height: '42px', fontSize: '13px', fontWeight: 700 }}
+            >
+              {isSwitching ? '⏳ সংযুক্ত ও তথ্য লোড হচ্ছে...' : '🔓 এই Gmail যুক্ত ও সব তথ্য অ্যাপে আনুন'}
+            </button>
+          </form>
+        )}
+
+        {/* Primary 1-Click Backup & Restore Actions */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <button
             type="button"
@@ -210,32 +288,31 @@ export const AccountModal: React.FC<AccountModalProps> = ({
             style={{ height: '46px', fontSize: '14px', fontWeight: 700 }}
           >
             {isBackingUpNow || isSyncing
-              ? '⏳ ব্যাকআপ হচ্ছে...'
+              ? '⏳ Google Drive-এ ব্যাকআপ হচ্ছে...'
               : pendingSyncCount > 0
-              ? `🔄 এখনই ব্যাকআপ করুন (${toBengaliNum(pendingSyncCount)}টি নতুন)`
-              : '🔄 এখনই ব্যাকআপ করুন (Backup Now)'}
+              ? `☁️ Google Drive-এ এখনই ব্যাকআপ রাখুন (${toBengaliNum(pendingSyncCount)}টি নতুন)`
+              : '☁️ Google Drive-এ এখনই ব্যাকআপ রাখুন (Backup Now)'}
           </button>
 
           <button
             type="button"
             className="md3-btn-tonal"
-            onClick={handleDriveFileSave}
+            disabled={isRestoring || isSyncing}
+            onClick={handleRestoreClick}
+            style={{ fontWeight: 700 }}
           >
-            📂 Google Drive অ্যাপে ব্যাকআপ ফাইল সেভ করুন
+            {isRestoring
+              ? '⏳ Google Drive থেকে তথ্য অ্যাপে আসছে...'
+              : '📥 Google Drive থেকে সব তথ্য অ্যাপে আনুন (Restore)'}
           </button>
 
-          {onSwitchAccount && (
-            <button
-              type="button"
-              className="md3-btn-outlined"
-              onClick={() => {
-                onClose();
-                onSwitchAccount();
-              }}
-            >
-              🔄 ব্যাকআপের Gmail পরিবর্তন করুন
-            </button>
-          )}
+          <button
+            type="button"
+            className="md3-btn-outlined"
+            onClick={() => setShowSwitchGmailInput(!showSwitchGmailInput)}
+          >
+            🔄 অন্য Gmail বসিয়ে ব্যাকআপ আনুন / পরিবর্তন করুন
+          </button>
 
           <button
             type="button"
@@ -261,4 +338,3 @@ export const AccountModal: React.FC<AccountModalProps> = ({
     </div>
   );
 };
-

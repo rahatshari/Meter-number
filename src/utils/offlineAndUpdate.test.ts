@@ -175,5 +175,67 @@ test('formatLastBackupTimeBn and isAutoCloudBackupEnabled handle 1-click backup 
   assert.equal(isAutoCloudBackupEnabled(), true);
 });
 
+test('getSharedAccountKey unifies Google Account login and ID/Password login onto the exact same Firestore bucket', async () => {
+  const { getSharedAccountKey, getCleanUserEmail, getLegacyMirrorKeysForUser } = await import(
+    './authHelpers'
+  );
+  const googleUser = { uid: 'uid_google_1', email: 'rahatsharif10448@gmail.com' };
+  const passwordAliasUser = { uid: 'uid_pw_2', email: 'rahatsharif10448+biddut@gmail.com' };
+  const googlePickerAliasUser = {
+    uid: 'uid_picker_3',
+    email: 'rahatsharif10448+biddut_google@gmail.com',
+  };
 
+  assert.equal(getCleanUserEmail(googleUser), 'rahatsharif10448@gmail.com');
+  assert.equal(getCleanUserEmail(passwordAliasUser), 'rahatsharif10448@gmail.com');
+  assert.equal(getCleanUserEmail(googlePickerAliasUser), 'rahatsharif10448@gmail.com');
+
+  const key1 = getSharedAccountKey(googleUser);
+  const key2 = getSharedAccountKey(passwordAliasUser);
+  const key3 = getSharedAccountKey(googlePickerAliasUser);
+
+  assert.equal(key1, 'acct_rahatsharif10448_gmail_com');
+  assert.equal(key1, key2);
+  assert.equal(key2, key3);
+
+  const mirrorKeys = getLegacyMirrorKeysForUser(googleUser);
+  assert.equal(mirrorKeys.includes('zHb7bQNqDfcDutkSKB3GCohaUuz2'), true);
+});
+
+test('googleDriveBackup defines drive.file & drive.appdata SCOPES and normalizes restored customers', async () => {
+  const {
+    SCOPES,
+    DRIVE_BACKUP_FILENAME,
+    normalizeRestoredCustomers,
+    getDriveAccessToken,
+    clearDriveAccessToken,
+  } = await import('./googleDriveBackup');
+
+  assert.deepEqual(SCOPES, [
+    'https://www.googleapis.com/auth/drive.file',
+    'https://www.googleapis.com/auth/drive.appdata',
+  ]);
+  assert.equal(DRIVE_BACKUP_FILENAME, 'Biddut_Bill_Drive_Backup.json');
+
+  const restored = normalizeRestoredCustomers([
+    {
+      id: '101',
+      name: 'মোঃ বেল্লাল শেখ',
+      fatherName: 'কাসেম শেখ',
+      address: 'ছোটোবাদুরা',
+      mobile: '01766998577',
+      smsAccount: '1032091754490',
+      dueDate: '12',
+      lastPaidMonth: '',
+    },
+  ]);
+
+  assert.equal(restored.length, 1);
+  assert.equal(restored[0].name, 'মোঃ বেল্লাল শেখ');
+  assert.equal(restored[0].father, 'কাসেম শেখ');
+  assert.equal(restored[0].sms, '1032091754490');
+
+  clearDriveAccessToken();
+  assert.equal(await getDriveAccessToken(), null);
+});
 
