@@ -33,24 +33,53 @@ export function getCleanUserEmail(
 }
 
 /**
- * Returns a canonical Firestore user bucket key derived from the user's clean Gmail/email address.
- * Guarantees that logging in via Google Account ("Continue with Google") and logging in via
- * ID & Password ("লগইন করুন") with the same Gmail ALWAYS read and write the exact same Firestore data!
+ * Returns a partitioned local storage scope key for the given user.
+ * Each user gets their own completely isolated local storage namespace.
+ * Unauthenticated users use 'guest'.
+ */
+export function getUserScopeKey(
+  user: { uid?: string; email?: string | null; displayName?: string | null } | null | undefined
+): string {
+  if (!user) return 'guest';
+  const cleanEmail = getCleanUserEmail(user);
+  if (cleanEmail && cleanEmail.includes('@')) {
+    return cleanEmail.toLowerCase().replace(/[^a-z0-9]/g, '_');
+  }
+  return (user.uid || 'guest').replace(/[^a-z0-9]/g, '_');
+}
+
+/**
+ * Saves a verified UID associated with a clean email on this device so that
+ * if the user switches between Google login and Password login for the exact same email,
+ * their own records can be linked without ever accessing anyone else's data.
+ */
+export function recordUserLinkedUid(email: string, uid: string): void {
+  if (typeof localStorage === 'undefined' || !email || !uid) return;
+  const clean = normalizeGmailInput(email).replace(/\+biddut([a-z0-9_]*)@/i, '@');
+  if (!clean || !clean.includes('@')) return;
+  try {
+    const key = `biddut_linked_uid_${clean.replace(/[^a-z0-9]/g, '_')}`;
+    localStorage.setItem(key, uid);
+  } catch {
+    // ignore storage write errors
+  }
+}
+
+/**
+ * Returns the primary Firestore user bucket key.
+ * Uses request.auth.uid to strictly satisfy Firestore security rules (request.auth.uid == userId).
+ * Guarantees that each authenticated user reads and writes exclusively to their own private bucket.
  */
 export function getSharedAccountKey(
   user: { uid: string; email?: string | null; displayName?: string | null } | null | undefined
 ): string {
   if (!user) return '';
-  const cleanEmail = getCleanUserEmail(user);
-  if (cleanEmail && cleanEmail.includes('@')) {
-    return `acct_${cleanEmail.replace(/[^a-z0-9]/g, '_')}`;
-  }
   return user.uid;
 }
 
 /**
- * Returns legacy UID buckets associated with this user so existing UID-keyed records
- * are automatically migrated and kept in sync across both Google login and ID/Password login.
+ * Returns legacy UID buckets belonging strictly to this user on this device.
+ * Never hardcodes any foreign UIDs, ensuring zero data leakage between different users.
  */
 export function getLegacyMirrorKeysForUser(
   user: { uid: string; email?: string | null; displayName?: string | null } | null | undefined
@@ -58,10 +87,15 @@ export function getLegacyMirrorKeysForUser(
   if (!user) return [];
   const keys = new Set<string>([user.uid]);
   const cleanEmail = getCleanUserEmail(user);
-  if (cleanEmail === 'rahatsharif10448@gmail.com') {
-    keys.add('zHb7bQNqDfcDutkSKB3GCohaUuz2');
-    keys.add('xnqMg1msvZdxwAWb9C6cCj0MBdW2');
-    keys.add('WmeP8OzuapeQGKyyctvPEevaLBH3');
+  if (cleanEmail && typeof localStorage !== 'undefined') {
+    try {
+      const savedAltUid = localStorage.getItem(`biddut_linked_uid_${cleanEmail.replace(/[^a-z0-9]/g, '_')}`);
+      if (savedAltUid && savedAltUid !== user.uid) {
+        keys.add(savedAltUid);
+      }
+    } catch {
+      // ignore storage read errors
+    }
   }
   return Array.from(keys);
 }

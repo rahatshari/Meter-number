@@ -175,31 +175,54 @@ test('formatLastBackupTimeBn and isAutoCloudBackupEnabled handle 1-click backup 
   assert.equal(isAutoCloudBackupEnabled(), true);
 });
 
-test('getSharedAccountKey unifies Google Account login and ID/Password login onto the exact same Firestore bucket', async () => {
-  const { getSharedAccountKey, getCleanUserEmail, getLegacyMirrorKeysForUser } = await import(
-    './authHelpers'
-  );
-  const googleUser = { uid: 'uid_google_1', email: 'rahatsharif10448@gmail.com' };
-  const passwordAliasUser = { uid: 'uid_pw_2', email: 'rahatsharif10448+biddut@gmail.com' };
-  const googlePickerAliasUser = {
-    uid: 'uid_picker_3',
-    email: 'rahatsharif10448+biddut_google@gmail.com',
+test('getUserScopeKey and getSharedAccountKey enforce strict multi-tenant isolation with zero foreign UIDs', async () => {
+  const {
+    getSharedAccountKey,
+    getCleanUserEmail,
+    getUserScopeKey,
+    getLegacyMirrorKeysForUser,
+    recordUserLinkedUid,
+  } = await import('./authHelpers');
+
+  const mockStorage: Record<string, string> = {};
+  (globalThis as any).localStorage = {
+    getItem: (k: string) => mockStorage[k] || null,
+    setItem: (k: string, v: string) => {
+      mockStorage[k] = v;
+    },
+    removeItem: (k: string) => {
+      delete mockStorage[k];
+    },
   };
 
-  assert.equal(getCleanUserEmail(googleUser), 'rahatsharif10448@gmail.com');
-  assert.equal(getCleanUserEmail(passwordAliasUser), 'rahatsharif10448@gmail.com');
-  assert.equal(getCleanUserEmail(googlePickerAliasUser), 'rahatsharif10448@gmail.com');
+  const userA = { uid: 'uid_rahat_1', email: 'rahatsharif10448@gmail.com' };
+  const userB = { uid: 'uid_other_2', email: 'otheruser99@gmail.com' };
 
-  const key1 = getSharedAccountKey(googleUser);
-  const key2 = getSharedAccountKey(passwordAliasUser);
-  const key3 = getSharedAccountKey(googlePickerAliasUser);
+  // 1. Clean email normalization
+  assert.equal(getCleanUserEmail(userA), 'rahatsharif10448@gmail.com');
+  assert.equal(getCleanUserEmail(userB), 'otheruser99@gmail.com');
 
-  assert.equal(key1, 'acct_rahatsharif10448_gmail_com');
-  assert.equal(key1, key2);
-  assert.equal(key2, key3);
+  // 2. Local storage namespaces are strictly isolated per user
+  assert.equal(getUserScopeKey(userA), 'rahatsharif10448_gmail_com');
+  assert.ok(getUserScopeKey(userA) !== getUserScopeKey(userB));
 
-  const mirrorKeys = getLegacyMirrorKeysForUser(googleUser);
-  assert.equal(mirrorKeys.includes('zHb7bQNqDfcDutkSKB3GCohaUuz2'), true);
+  // 3. Firestore primary bucket uses user.uid to satisfy security rules (request.auth.uid == userId)
+  assert.equal(getSharedAccountKey(userA), 'uid_rahat_1');
+  assert.equal(getSharedAccountKey(userB), 'uid_other_2');
+
+  // 4. Zero foreign UIDs in legacy mirror keys
+  const mirrorA = getLegacyMirrorKeysForUser(userA);
+  assert.equal(mirrorA.includes('zHb7bQNqDfcDutkSKB3GCohaUuz2'), false);
+  assert.equal(mirrorA.includes('xnqMg1msvZdxwAWb9C6cCj0MBdW2'), false);
+  assert.equal(mirrorA.includes('WmeP8OzuapeQGKyyctvPEevaLBH3'), false);
+  assert.deepEqual(mirrorA, ['uid_rahat_1']);
+
+  // 5. Linking alt UID for the exact same user on this device
+  recordUserLinkedUid('rahatsharif10448@gmail.com', 'uid_rahat_legacy_pw');
+  const mirrorAAfterLink = getLegacyMirrorKeysForUser(userA);
+  assert.equal(mirrorAAfterLink.includes('uid_rahat_legacy_pw'), true);
+  // User B still gets only their own UID
+  assert.deepEqual(getLegacyMirrorKeysForUser(userB), ['uid_other_2']);
 });
 
 test('googleDriveBackup defines drive.file & drive.appdata SCOPES and normalizes restored customers', async () => {

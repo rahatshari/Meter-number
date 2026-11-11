@@ -58,6 +58,8 @@ import {
   getSharedAccountKey,
   getLegacyMirrorKeysForUser,
   getCleanUserEmail,
+  getUserScopeKey,
+  recordUserLinkedUid,
 } from './utils/authHelpers';
 import {
   initDriveAuth,
@@ -232,17 +234,21 @@ export const App: React.FC = () => {
     [isOnline, currentUser, showToast]
   );
 
-  // Local storage helpers
-  const saveToLocalStorage = (list: Customer[]) => {
+  // User-scoped Local storage helpers
+  const saveToLocalStorage = (list: Customer[], targetUser?: User | null) => {
+    const u = targetUser !== undefined ? targetUser : currentUser;
+    const scopeKey = getUserScopeKey(u);
     try {
-      localStorage.setItem('billCustomers', JSON.stringify(list));
+      localStorage.setItem(`billCustomers_${scopeKey}`, JSON.stringify(list));
     } catch (e) {
       console.error('LocalStorage write error', e);
     }
   };
 
-  const loadLocalData = (): Customer[] => {
-    const saved = localStorage.getItem('billCustomers');
+  const loadLocalData = (targetUser?: User | null): Customer[] => {
+    const u = targetUser !== undefined ? targetUser : currentUser;
+    const scopeKey = getUserScopeKey(u);
+    const saved = localStorage.getItem(`billCustomers_${scopeKey}`);
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -259,14 +265,26 @@ export const App: React.FC = () => {
         console.error('LocalStorage read error', e);
       }
     }
+    // Backward compatibility for guest session
+    if (scopeKey === 'guest') {
+      const legacySaved = localStorage.getItem('billCustomers');
+      if (legacySaved) {
+        try {
+          const parsed = JSON.parse(legacySaved);
+          if (Array.isArray(parsed)) return parsed;
+        } catch {
+          // ignore
+        }
+      }
+    }
     return [];
   };
 
-  // Firestore operations (unified by clean Gmail account key + mirrored to legacy UID paths)
+  // Firestore operations (strictly scoped to the authenticated user's private collection)
   const saveCustomerToFirestore = async (c: Customer, user: User) => {
     const custId = String(c.id);
-    const sharedKey = getSharedAccountKey(user);
-    const path = `users/${sharedKey}/customers/${custId}`;
+    const targetUid = user.uid;
+    const path = `users/${targetUid}/customers/${custId}`;
     try {
       const basePayload = {
         id: custId,
@@ -279,18 +297,15 @@ export const App: React.FC = () => {
         dueDate: String(c.dueDate || '').slice(0, 10),
         group: String(c.group || '').slice(0, 100),
         lastPaidMonth: String(c.lastPaidMonth || '').slice(0, 20),
+        userId: targetUid,
       };
 
-      // Write to canonical shared email bucket
-      await setDoc(doc(db, 'users', sharedKey, 'customers', custId), {
-        ...basePayload,
-        userId: sharedKey,
-      });
+      await setDoc(doc(db, 'users', targetUid, 'customers', custId), basePayload);
 
-      // Mirror to legacy UID buckets so any older session or login method stays 100% synced
+      // If this verified user previously used another UID on this device, mirror to keep it updated
       const mirrorKeys = getLegacyMirrorKeysForUser(user);
       for (const mKey of mirrorKeys) {
-        if (mKey && mKey !== sharedKey) {
+        if (mKey && mKey !== targetUid) {
           setDoc(doc(db, 'users', mKey, 'customers', custId), {
             ...basePayload,
             userId: mKey,
@@ -307,14 +322,14 @@ export const App: React.FC = () => {
 
   const deleteCustomerFromFirestore = async (id: string | number, user: User) => {
     const custId = String(id);
-    const sharedKey = getSharedAccountKey(user);
-    const path = `users/${sharedKey}/customers/${custId}`;
+    const targetUid = user.uid;
+    const path = `users/${targetUid}/customers/${custId}`;
     try {
-      await deleteDoc(doc(db, 'users', sharedKey, 'customers', custId));
+      await deleteDoc(doc(db, 'users', targetUid, 'customers', custId));
 
       const mirrorKeys = getLegacyMirrorKeysForUser(user);
       for (const mKey of mirrorKeys) {
-        if (mKey && mKey !== sharedKey) {
+        if (mKey && mKey !== targetUid) {
           deleteDoc(doc(db, 'users', mKey, 'customers', custId)).catch(() => {});
         }
       }
@@ -326,23 +341,25 @@ export const App: React.FC = () => {
     }
   };
 
-  // Queue mutation helper (stores offline mutation and triggers auto-flush if online & signed in)
+  // Queue mutation helper (scoped by current user's namespace)
   const queueMutation = useCallback(
     (item: PendingSyncItem) => {
+      const scopeKey = getUserScopeKey(currentUser);
       setPendingQueue((prev) => {
         const next = enqueueSyncMutation(prev, item);
-        savePendingSyncQueue(next);
+        savePendingSyncQueue(next, scopeKey);
         return next;
       });
     },
-    []
+    [currentUser]
   );
 
   // Automatic Offline Queue Flush when online and signed in
   const flushOfflineQueue = useCallback(
     async (user: User | null, online: boolean) => {
       if (!user || !online || isFlushingRef.current) return;
-      const currentQueue = loadPendingSyncQueue();
+      const scopeKey = getUserScopeKey(user);
+      const currentQueue = loadPendingSyncQueue(scopeKey);
       if (currentQueue.length === 0) return;
 
       isFlushingRef.current = true;
@@ -361,7 +378,7 @@ export const App: React.FC = () => {
               await deleteCustomerFromFirestore(item.id, user);
             }
             workingQueue = dequeueSyncMutation(workingQueue, item.id, item.timestamp);
-            savePendingSyncQueue(workingQueue);
+            savePendingSyncQueue(workingQueue, scopeKey);
             setPendingQueue(workingQueue);
             flushedCount++;
           } catch (err) {
@@ -493,44 +510,54 @@ export const App: React.FC = () => {
       }
 
       if (user) {
-        const sharedKey = getSharedAccountKey(user);
+        const cleanEmail = getCleanUserEmail(user);
+        if (cleanEmail) {
+          recordUserLinkedUid(cleanEmail, user.uid);
+        }
 
-        // First flush any pending offline changes
+        const scopeKey = getUserScopeKey(user);
+        const userLocalData = loadLocalData(user);
+        const userQueue = loadPendingSyncQueue(scopeKey);
+
+        setCustomers(userLocalData);
+        setPendingQueue(userQueue);
+
+        // First flush any pending offline changes for this user
         if (typeof navigator === 'undefined' || navigator.onLine) {
           flushOfflineQueue(user, true);
 
-          // Automatically merge any customers from the user's raw UID / legacy buckets into the shared Gmail bucket
+          // If this user previously used another UID on this device for the exact same email, migrate their records
           (async () => {
             try {
-              const sharedSnap = await getDocs(collection(db, 'users', sharedKey, 'customers'));
-              const existingIds = new Set(sharedSnap.docs.map((d) => String(d.id)));
+              const currentSnap = await getDocs(collection(db, 'users', user.uid, 'customers'));
+              const existingIds = new Set(currentSnap.docs.map((d) => String(d.id)));
               const legacyKeys = getLegacyMirrorKeysForUser(user);
 
               for (const lKey of legacyKeys) {
-                if (!lKey || lKey === sharedKey) continue;
+                if (!lKey || lKey === user.uid) continue;
                 const lSnap = await getDocs(collection(db, 'users', lKey, 'customers'));
                 for (const docSnap of lSnap.docs) {
                   const data = docSnap.data();
                   const cid = String(data.id || docSnap.id);
                   if (!existingIds.has(cid)) {
                     existingIds.add(cid);
-                    await setDoc(doc(db, 'users', sharedKey, 'customers', cid), {
+                    await setDoc(doc(db, 'users', user.uid, 'customers', cid), {
                       ...data,
                       id: cid,
-                      userId: sharedKey,
+                      userId: user.uid,
                     });
                   }
                 }
               }
             } catch {
-              // ignore background migration errors when offline
+              // ignore background migration errors
             }
           })();
         }
 
-        const custPath = `users/${sharedKey}/customers`;
+        const custPath = `users/${user.uid}/customers`;
         unsubscribeCustomers = onSnapshot(
-          collection(db, 'users', sharedKey, 'customers'),
+          collection(db, 'users', user.uid, 'customers'),
           (snapshot) => {
             const cloudCustomers: Customer[] = [];
             snapshot.forEach((docSnap) => {
@@ -546,12 +573,12 @@ export const App: React.FC = () => {
                 dueDate: data.dueDate || '',
                 group: data.group || '',
                 lastPaidMonth: data.lastPaidMonth || '',
-                userId: data.userId,
+                userId: data.userId || user.uid,
               });
             });
 
-            const localList = loadLocalData();
-            const currentQueue = loadPendingSyncQueue();
+            const localList = loadLocalData(user);
+            const currentQueue = loadPendingSyncQueue(scopeKey);
 
             if (cloudCustomers.length > 0 || currentQueue.length > 0) {
               const reconciled = reconcileCloudWithPendingQueue(
@@ -560,7 +587,7 @@ export const App: React.FC = () => {
                 currentQueue
               );
               setCustomers(reconciled);
-              saveToLocalStorage(reconciled);
+              saveToLocalStorage(reconciled, user);
             } else if (localList.length > 0) {
               // Upload existing local data to cloud if cloud is newly initialized
               setCustomers(localList);
@@ -574,18 +601,20 @@ export const App: React.FC = () => {
               });
             } else {
               setCustomers([]);
+              saveToLocalStorage([], user);
             }
           },
           (error) => {
             if (typeof navigator !== 'undefined' && !navigator.onLine) {
               return;
             }
-            handleFirestoreError(error, OperationType.GET, custPath);
+            console.warn('Firestore snapshot error on path:', custPath, error);
           }
         );
       } else {
-        const local = loadLocalData();
+        const local = loadLocalData(null);
         setCustomers(local);
+        setPendingQueue(loadPendingSyncQueue('guest'));
       }
     });
 
@@ -1011,8 +1040,13 @@ export const App: React.FC = () => {
         const res = await signInWithPopup(auth, provider);
         if (res.user?.email) {
           recordSavedGmailAccount(res.user.email);
+          recordUserLinkedUid(res.user.email, res.user.uid);
           markGoogleDriveAccessGranted(res.user.email);
-          await fetchAllBackedUpCustomersForGmail(db, res.user);
+          const restored = await fetchAllBackedUpCustomersForGmail(db, res.user);
+          if (restored.length > 0) {
+            setCustomers(restored);
+            saveToLocalStorage(restored, res.user);
+          }
         }
         showToast('✓ আপনার Gmail ও Google Drive সফলভাবে সংযুক্ত হয়েছে!');
       }
@@ -1044,11 +1078,12 @@ export const App: React.FC = () => {
   const handleEmailLogin = async (email: string, pass: string) => {
     try {
       const res = await signInWithStandardEmailPassword(auth, email, pass);
+      recordUserLinkedUid(res.resolvedEmail, res.credential.user.uid);
       markGoogleDriveAccessGranted(res.resolvedEmail);
       const restored = await fetchAllBackedUpCustomersForGmail(db, res.credential.user);
       if (restored.length > 0) {
         setCustomers(restored);
-        saveToLocalStorage(restored);
+        saveToLocalStorage(restored, res.credential.user);
       }
       showToast(`✓ ${res.resolvedEmail} দিয়ে সফলভাবে লগইন ও তথ্য লোড হয়েছে!`);
     } catch (err: any) {
@@ -1071,11 +1106,12 @@ export const App: React.FC = () => {
   const handleEmailRegister = async (email: string, pass: string, fullName?: string) => {
     try {
       const res = await registerWithStandardEmailPassword(auth, email, pass, fullName);
+      recordUserLinkedUid(res.resolvedEmail, res.credential.user.uid);
       markGoogleDriveAccessGranted(res.resolvedEmail);
       const restored = await fetchAllBackedUpCustomersForGmail(db, res.credential.user);
       if (restored.length > 0) {
         setCustomers(restored);
-        saveToLocalStorage(restored);
+        saveToLocalStorage(restored, res.credential.user);
       }
       showToast(`✓ ${res.resolvedEmail} দিয়ে নতুন অ্যাকাউন্ট তৈরি ও লগইন সম্পন্ন হয়েছে!`);
     } catch (err: any) {
@@ -1106,6 +1142,9 @@ export const App: React.FC = () => {
     try {
       clearDriveAccessToken();
       disconnectGoogleDriveAccount();
+      // Reset active in-memory customer and queue state immediately to prevent data exposure
+      setCustomers([]);
+      setPendingQueue([]);
       await signOut(auth);
       try {
         await signOut(driveAuth);

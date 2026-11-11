@@ -96,21 +96,31 @@ export function reconcileCloudWithPendingQueue(
   return result;
 }
 
-export function loadPendingSyncQueue(): PendingSyncItem[] {
+export function loadPendingSyncQueue(scopeKey: string = 'guest'): PendingSyncItem[] {
   try {
-    const raw = localStorage.getItem(SYNC_QUEUE_STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    const raw = localStorage.getItem(`${SYNC_QUEUE_STORAGE_KEY}_${scopeKey}`);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+    // Backward-compatibility fallback for guest session
+    if (scopeKey === 'guest') {
+      const legacyRaw = localStorage.getItem(SYNC_QUEUE_STORAGE_KEY);
+      if (legacyRaw) {
+        const parsed = JSON.parse(legacyRaw);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    }
+    return [];
   } catch (e) {
     console.error('Failed to read offline sync queue:', e);
     return [];
   }
 }
 
-export function savePendingSyncQueue(queue: PendingSyncItem[]): void {
+export function savePendingSyncQueue(queue: PendingSyncItem[], scopeKey: string = 'guest'): void {
   try {
-    localStorage.setItem(SYNC_QUEUE_STORAGE_KEY, JSON.stringify(queue));
+    localStorage.setItem(`${SYNC_QUEUE_STORAGE_KEY}_${scopeKey}`, JSON.stringify(queue));
   } catch (e) {
     console.error('Failed to write offline sync queue:', e);
   }
