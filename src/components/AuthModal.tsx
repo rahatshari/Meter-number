@@ -9,7 +9,6 @@ interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
   onGoogleLogin: () => Promise<void>;
-  onJustEmailLogin?: (email: string) => Promise<void>;
   onEmailLogin: (email: string, pass: string) => Promise<void>;
   onEmailRegister: (email: string, pass: string, fullName?: string) => Promise<void>;
   onForgotPassword: (email: string) => Promise<void>;
@@ -21,7 +20,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   isOpen,
   onClose,
   onGoogleLogin,
-  onJustEmailLogin,
   onEmailLogin,
   onEmailRegister,
   onForgotPassword,
@@ -31,8 +29,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [driveGmail, setDriveGmail] = useState('');
-  const [pendingDriveConsentEmail, setPendingDriveConsentEmail] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [resetSent, setResetSent] = useState(false);
@@ -50,8 +46,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       setFullName('');
       setEmail('');
       setPassword('');
-      setDriveGmail('');
-      setPendingDriveConsentEmail(null);
     }
   }, [isOpen]);
 
@@ -73,37 +67,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
       setHelperNotice({
         type: 'info',
-        text: 'পপআপ উইন্ডো চালু করা যায়নি। নিচের "Google Drive ব্যাকআপ ও রিস্টোর" বক্সে আপনার Gmail বসিয়ে ক্লিক করলেই সব তথ্য চলে আসবে!',
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // METHOD 1B: Direct Gmail -> Google Drive Access & Auto-Restore
-  const handleDriveGmailSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const clean = normalizeGmailInput(driveGmail);
-    if (!clean || !clean.includes('@')) {
-      onShowToast('দয়া করে আপনার সঠিক Gmail ঠিকানা বসান');
-      return;
-    }
-    setPendingDriveConsentEmail(clean);
-  };
-
-  const handleConfirmDriveGmailAccess = async () => {
-    if (!pendingDriveConsentEmail || !onJustEmailLogin) return;
-    setIsLoading(true);
-    setHelperNotice(null);
-    try {
-      await onJustEmailLogin(pendingDriveConsentEmail);
-      recordSavedGmailAccount(pendingDriveConsentEmail);
-      setPendingDriveConsentEmail(null);
-      onClose();
-    } catch {
-      setHelperNotice({
-        type: 'warning',
-        text: 'সংযোগ সম্পন্ন হয়নি। ইন্টারনেট সংযোগ চেক করে আবার চেষ্টা করুন।',
+        text: 'পপআপ উইন্ডো চালু করা যায়নি। নিচের ফর্মে আপনার ইমেইল ও পাসওয়ার্ড দিয়ে লগইন করুন।',
       });
     } finally {
       setIsLoading(false);
@@ -150,7 +114,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       ) {
         setHelperNotice({
           type: 'warning',
-          text: 'ইমেইল বা পাসওয়ার্ড মেলেনি। আপনি চাইলে উপরের "Google Drive ব্যাকআপ ও রিস্টোর" বক্সে শুধু Gmail বসিয়ে সব তথ্য অ্যাপে আনতে পারেন!',
+          text: 'ইমেইল বা পাসওয়ার্ড মেলেনি। সঠিক তথ্য দিন অথবা পাসওয়ার্ড রিসেট করুন।',
         });
       } else if (code === 'auth/email-already-in-use') {
         setHelperNotice({
@@ -240,7 +204,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               color: 'var(--md-sys-color-on-surface)',
             }}
           >
-            অ্যাকাউন্ট ও Google Drive ব্যাকআপ
+            অ্যাকাউন্ট সাইন ইন ও ক্লাউড সিঙ্ক
           </h3>
           <p
             style={{
@@ -249,7 +213,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               color: 'var(--md-sys-color-on-surface-variant)',
             }}
           >
-            Gmail দিয়ে Google Drive অ্যাক্সেস নিন অথবা ইমেইল-পাসওয়ার্ড দিয়ে লগইন করুন
+            Google অ্যাকাউন্ট অথবা ইমেইল ও পাসওয়ার্ড দিয়ে লগইন করুন
           </p>
         </div>
 
@@ -335,96 +299,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </button>
         </div>
 
-        {/* ============================================================
-            METHOD 1B: DIRECT GMAIL -> GOOGLE DRIVE ACCESS & RESTORE
-            ============================================================ */}
-        {onJustEmailLogin && (
-          <div
-            style={{
-              backgroundColor: 'var(--md-sys-color-surface)',
-              border: '1.5px solid var(--md-sys-color-primary)',
-              borderRadius: '14px',
-              padding: '12px',
-              marginBottom: '12px',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-              <svg width="18" height="18" viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg">
-                <path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/>
-                <path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0 -1.2 4.5h27.5z" fill="#00ac47"/>
-                <path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.502l5.852 11.5z" fill="#ea4335"/>
-                <path d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/>
-                <path d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/>
-                <path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 28h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/>
-              </svg>
-              <strong style={{ fontSize: '13px', color: 'var(--md-sys-color-on-surface)' }}>
-                Google Drive ব্যাকআপ ও রিস্টোর (শুধু Gmail দিয়ে)
-              </strong>
-            </div>
-            <p style={{ margin: '0 0 8px', fontSize: '11.5px', color: 'var(--md-sys-color-on-surface-variant)', lineHeight: 1.4 }}>
-              অ্যাপ আনইনস্টল করে পুনরায় ইনস্টল করলে এখানে আপনার Gmail বসিয়ে ক্লিক করলেই আগের আপলোড করা সব তথ্য অ্যাপে চলে আসবে:
-            </p>
-            {!pendingDriveConsentEmail ? (
-              <form onSubmit={handleDriveGmailSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <input
-                  type="text"
-                  inputMode="email"
-                  autoCapitalize="none"
-                  autoCorrect="off"
-                  className="md3-input"
-                  placeholder="আপনার Gmail বসান (যেমন: example@gmail.com)"
-                  value={driveGmail}
-                  onChange={(e) => setDriveGmail(e.target.value)}
-                />
-                <button
-                  type="submit"
-                  className="md3-btn-filled"
-                  disabled={isLoading}
-                  style={{ height: '42px', fontSize: '13px', fontWeight: 700 }}
-                >
-                  🔓 Google Drive অ্যাক্সেস নিন ও সব তথ্য আনুন
-                </button>
-              </form>
-            ) : (
-              <div
-                style={{
-                  padding: '10px',
-                  borderRadius: '10px',
-                  backgroundColor: 'var(--md-sys-color-primary-container)',
-                  color: 'var(--md-sys-color-on-primary-container)',
-                  fontSize: '12px',
-                }}
-              >
-                <div style={{ fontWeight: 700, marginBottom: '6px' }}>
-                  ✓ {pendingDriveConsentEmail} — Google Drive অ্যাক্সেস অনুমতি:
-                </div>
-                <div style={{ marginBottom: '8px', lineHeight: 1.4 }}>
-                  এই Gmail-এর Google Drive ব্যাকআপ থেকে আপনার আপলোড করা সব গ্রাহকের তথ্য অ্যাপে লোড এবং নতুন তথ্য ব্যাকআপ করার অনুমতি দিন।
-                </div>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <button
-                    type="button"
-                    className="md3-btn-filled"
-                    disabled={isLoading}
-                    onClick={handleConfirmDriveGmailAccess}
-                    style={{ flex: 1, height: '40px', fontSize: '12.5px', fontWeight: 700 }}
-                  >
-                    {isLoading ? '⏳ তথ্য আসছে...' : '✓ অনুমতি দিন ও সব তথ্য আনুন'}
-                  </button>
-                  <button
-                    type="button"
-                    className="md3-btn-outlined"
-                    disabled={isLoading}
-                    onClick={() => setPendingDriveConsentEmail(null)}
-                    style={{ width: 'auto', padding: '0 12px', height: '40px', fontSize: '12px' }}
-                  >
-                    বাতিল
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+
 
         {/* ============================================================
             DIVIDER: অথবা ইমেইল ও পাসওয়ার্ড দিয়ে

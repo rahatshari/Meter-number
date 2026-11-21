@@ -115,7 +115,7 @@ export const CustomerCard: React.FC<CustomerCardProps> = ({
         style={{
           fontSize: '12.5px',
           color: 'var(--md-sys-color-on-surface-variant)',
-          backgroundColor: 'var(--md-sys-color-surface)',
+          backgroundColor: 'var(--md-sys-color-surface-dim)',
           padding: '8px 12px',
           borderRadius: '10px',
           marginBottom: '10px',

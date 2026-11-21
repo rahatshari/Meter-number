@@ -359,7 +359,8 @@ export function normalizeRestoredCustomers(rawList: any[]): Customer[] {
  */
 export async function fetchAllBackedUpCustomersForGmail(
   dbInstance: Firestore,
-  user: { uid: string; email?: string | null; displayName?: string | null }
+  user: { uid: string; email?: string | null; displayName?: string | null },
+  legacyDbInstance?: Firestore
 ): Promise<Customer[]> {
   const mergedMap = new Map<string, Customer>();
 
@@ -377,39 +378,44 @@ export async function fetchAllBackedUpCustomersForGmail(
     }
   }
 
-  // 2. Check unified Gmail Cloud Vault in Firestore + legacy UID buckets
+  // 2. Check unified Gmail Cloud Vault in Firestore + legacy UID buckets across primary & legacy (default) DB
   const sharedKey = getSharedAccountKey(user);
   const mirrorKeys = getLegacyMirrorKeysForUser(user);
   const allKeysToCheck = Array.from(new Set([sharedKey, ...mirrorKeys])).filter(Boolean);
+  const dbsToCheck = legacyDbInstance && legacyDbInstance !== dbInstance
+    ? [dbInstance, legacyDbInstance]
+    : [dbInstance];
 
-  for (const key of allKeysToCheck) {
-    try {
-      const snap = await getDocs(collection(dbInstance, 'users', key, 'customers'));
-      snap.forEach((docSnap) => {
-        const data = docSnap.data();
-        const cid = String(data.id || docSnap.id);
-        if (!mergedMap.has(cid) && data.name) {
-          mergedMap.set(cid, {
-            id: parseFloat(cid) || cid,
-            name: String(data.name || ''),
-            father: String(data.father || ''),
-            mother: String(data.mother || ''),
-            address: String(data.address || ''),
-            mobile: String(data.mobile || ''),
-            sms: String(data.sms || ''),
-            dueDate: String(data.dueDate || ''),
-            group: String(data.group || ''),
-            lastPaidMonth: String(data.lastPaidMonth || ''),
-            userId: data.userId || sharedKey,
-          });
-        }
-      });
-    } catch {
-      // continue checking other keys
+  for (const targetDb of dbsToCheck) {
+    for (const key of allKeysToCheck) {
+      try {
+        const snap = await getDocs(collection(targetDb, 'users', key, 'customers'));
+        snap.forEach((docSnap) => {
+          const data = docSnap.data();
+          const cid = String(data.id || docSnap.id);
+          if (!mergedMap.has(cid) && data.name) {
+            mergedMap.set(cid, {
+              id: parseFloat(cid) || cid,
+              name: String(data.name || ''),
+              father: String(data.father || ''),
+              mother: String(data.mother || ''),
+              address: String(data.address || ''),
+              mobile: String(data.mobile || ''),
+              sms: String(data.sms || ''),
+              dueDate: String(data.dueDate || ''),
+              group: String(data.group || ''),
+              lastPaidMonth: String(data.lastPaidMonth || ''),
+              userId: data.userId || sharedKey,
+            });
+          }
+        });
+      } catch {
+        // continue checking other keys/databases
+      }
     }
   }
 
-  // 3. Ensure any records found in legacy keys are also written into the canonical sharedKey bucket
+  // 3. Ensure any records found in legacy keys/databases are also written into the canonical sharedKey bucket
   const finalCustomers = Array.from(mergedMap.values());
   if (finalCustomers.length > 0 && sharedKey) {
     for (const c of finalCustomers) {

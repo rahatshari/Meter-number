@@ -88,7 +88,7 @@ export const DuesView: React.FC<DuesViewProps> = ({
               padding: '8px 14px',
               fontSize: '12.5px',
               backgroundColor: 'var(--md-sys-color-warning)',
-              color: '#FFFFFF',
+              color: 'var(--md-sys-color-on-warning)',
               boxShadow: 'var(--md-elevation-1)',
             }}
             onClick={handleCopyUnpaidWhatsApp}

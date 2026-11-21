@@ -31,16 +31,20 @@
   --md-sys-color-outline-variant: #E2E8F0; 
 
   --md-sys-color-success: #059669; 
+  --md-sys-color-on-success: #FFFFFF;
   --md-sys-color-success-container: #ECFDF5;
   --md-sys-color-on-success-container: #064E3B;
 
   --md-sys-color-warning: #D97706;
+  --md-sys-color-on-warning: #FFFFFF;
   --md-sys-color-warning-container: #FFFBEB;
   --md-sys-color-on-warning-container: #78350F;
 
   --md-sys-color-error: #DC2626; 
   --md-sys-color-error-container: #FEF2F2;
   --md-sys-color-on-error-container: #7F1D1D;
+
+  --md-sys-color-soft-overlay: rgba(15, 23, 42, 0.04);
 
   --md-shape-corner-xs: 4px;
   --md-shape-corner-sm: 8px;
@@ -56,49 +60,53 @@
 }
 
 .dark {
-  /* Material Design 3 Dark Theme Palette */
-  --md-sys-color-primary: #9FA8DA; 
-  --md-sys-color-on-primary: #1A237E; 
-  --md-sys-color-primary-container: #283593;
-  --md-sys-color-on-primary-container: #E8EAF6;
+  /* Refined Obsidian-Indigo Dark Theme Palette */
+  --md-sys-color-primary: #818CF8; 
+  --md-sys-color-on-primary: #0F172A; 
+  --md-sys-color-primary-container: rgba(99, 102, 241, 0.18);
+  --md-sys-color-on-primary-container: #C7D2FE;
 
   --md-sys-color-secondary: #94A3B8;
   --md-sys-color-on-secondary: #0F172A;
-  --md-sys-color-secondary-container: #1E293B;
-  --md-sys-color-on-secondary-container: #F8FAFC;
+  --md-sys-color-secondary-container: rgba(148, 163, 184, 0.12);
+  --md-sys-color-on-secondary-container: #E2E8F0;
 
   --md-sys-color-tertiary: #38BDF8;
-  --md-sys-color-on-tertiary: #0C4A6E;
-  --md-sys-color-tertiary-container: #0369A1;
-  --md-sys-color-on-tertiary-container: #E0F2FE;
+  --md-sys-color-on-tertiary: #082F49;
+  --md-sys-color-tertiary-container: rgba(56, 189, 248, 0.16);
+  --md-sys-color-on-tertiary-container: #BAE6FD;
 
-  --md-sys-color-surface: #0B0F19; 
-  --md-sys-color-surface-dim: #070B12;
-  --md-sys-color-surface-container: #151D2F; 
-  --md-sys-color-surface-container-high: #1E293B; 
-  --md-sys-color-surface-container-highest: #334155; 
+  --md-sys-color-surface: #090D16; 
+  --md-sys-color-surface-dim: #05080F;
+  --md-sys-color-surface-container: #111827; 
+  --md-sys-color-surface-container-high: #1A2438; 
+  --md-sys-color-surface-container-highest: #26334D; 
 
-  --md-sys-color-on-surface: #F8FAFC; 
+  --md-sys-color-on-surface: #F1F5F9; 
   --md-sys-color-on-surface-variant: #94A3B8; 
-  --md-sys-color-outline: #475569; 
-  --md-sys-color-outline-variant: #1E293B; 
+  --md-sys-color-outline: #334155; 
+  --md-sys-color-outline-variant: rgba(148, 163, 184, 0.15); 
 
   --md-sys-color-success: #34D399; 
-  --md-sys-color-success-container: #064E3B;
+  --md-sys-color-on-success: #042F2E;
+  --md-sys-color-success-container: rgba(16, 185, 129, 0.15);
   --md-sys-color-on-success-container: #A7F3D0;
 
   --md-sys-color-warning: #FBBF24;
-  --md-sys-color-warning-container: #78350F;
+  --md-sys-color-on-warning: #1E1B18;
+  --md-sys-color-warning-container: rgba(245, 158, 11, 0.15);
   --md-sys-color-on-warning-container: #FDE68A;
 
   --md-sys-color-error: #F87171; 
-  --md-sys-color-error-container: #7F1D1D;
+  --md-sys-color-error-container: rgba(239, 68, 68, 0.16);
   --md-sys-color-on-error-container: #FECACA;
 
-  --md-elevation-1: 0 1px 3px 1px rgba(0, 0, 0, 0.4), 0 1px 2px 0 rgba(0, 0, 0, 0.3);
-  --md-elevation-2: 0 2px 6px 2px rgba(0, 0, 0, 0.5), 0 1px 2px 0 rgba(0, 0, 0, 0.3);
-  --md-elevation-3: 0 4px 8px 3px rgba(0, 0, 0, 0.6), 0 1px 3px 0 rgba(0, 0, 0, 0.4);
-  --md-elevation-fab: 0 6px 14px 2px rgba(0, 0, 0, 0.6);
+  --md-sys-color-soft-overlay: rgba(255, 255, 255, 0.06);
+
+  --md-elevation-1: 0 4px 14px -2px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --md-elevation-2: 0 8px 22px -3px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --md-elevation-3: 0 14px 32px -4px rgba(0, 0, 0, 0.68), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  --md-elevation-fab: 0 8px 22px rgba(99, 102, 241, 0.42);
 }
 
 * {
@@ -120,6 +128,12 @@ html, body {
   transition: background-color 0.25s ease, color 0.25s ease;
 }
 
+.dark body {
+  background-image: radial-gradient(ellipse 90% 38% at 50% 0%, rgba(99, 102, 241, 0.12), transparent 70%);
+  background-attachment: fixed;
+  letter-spacing: 0.01em;
+}
+
 .tabular {
   font-family: var(--font-bengali);
   font-variant-numeric: tabular-nums;
@@ -139,6 +153,11 @@ html, body {
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   transition: background-color 0.25s ease, border-color 0.25s ease;
+}
+
+.dark .md3-top-app-bar {
+  background: rgba(9, 13, 22, 0.82);
+  border-bottom-color: rgba(148, 163, 184, 0.14);
 }
 
 .md3-icon-btn {
@@ -186,6 +205,13 @@ html, body {
   transition: background-color 0.25s ease, border-color 0.25s ease;
 }
 
+.dark .md3-bottom-nav {
+  background: rgba(11, 16, 29, 0.88);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border-top-color: rgba(148, 163, 184, 0.14);
+}
+
 .md3-nav-item {
   display: flex;
   flex-direction: column;
@@ -220,6 +246,9 @@ html, body {
 .md3-nav-item.active .md3-nav-pill {
   background-color: var(--md-sys-color-primary-container);
   color: var(--md-sys-color-on-primary-container);
+}
+.dark .md3-nav-item.active .md3-nav-pill {
+  box-shadow: inset 0 0 0 1px rgba(129, 140, 248, 0.28);
 }
 
 .md3-nav-label {
@@ -296,6 +325,10 @@ html, body {
 .md3-chip:active {
   transform: scale(0.96);
 }
+.dark .md3-chip {
+  background-color: rgba(17, 24, 39, 0.9);
+  border-color: rgba(148, 163, 184, 0.2);
+}
 .md3-chip.active {
   background-color: var(--md-sys-color-primary-container);
   color: var(--md-sys-color-on-primary-container);
@@ -326,6 +359,10 @@ html, body {
   outline: none;
   transition: border-color 0.2s, box-shadow 0.2s;
   box-sizing: border-box;
+}
+.dark .md3-input {
+  background-color: #0B101D;
+  border-color: rgba(148, 163, 184, 0.22);
 }
 .md3-input:focus {
   border-color: var(--md-sys-color-primary);
@@ -371,6 +408,11 @@ html, body {
   justify-content: center;
   animation: md3FadeIn 0.2s ease-out;
 }
+.dark .md3-overlay {
+  background: rgba(3, 6, 14, 0.72);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
 .md3-overlay.center {
   align-items: center;
   padding: 16px;
@@ -393,6 +435,10 @@ html, body {
   box-shadow: var(--md-elevation-3);
   animation: md3SlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   position: relative;
+}
+.dark .md3-sheet {
+  background-color: #111827;
+  border-top-color: rgba(148, 163, 184, 0.2);
 }
 .md3-sheet.dialog {
   border-radius: var(--md-shape-corner-xl);

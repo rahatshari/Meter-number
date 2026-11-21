@@ -16,7 +16,7 @@ import {
   onSnapshot,
 } from 'firebase/firestore';
 
-import { auth, db, driveAuth, handleFirestoreError } from './firebase';
+import { auth, db, legacyDefaultDb, handleFirestoreError } from './firebase';
 import { Customer, StatusFilter, NavTab, ThemeMode, OperationType, AuthTab } from './types';
 import {
   getCurrentMonthStr,
@@ -62,13 +62,6 @@ import {
   recordUserLinkedUid,
 } from './utils/authHelpers';
 import {
-  initDriveAuth,
-  googleDriveSignIn,
-  getDriveAccessToken,
-  clearDriveAccessToken,
-  markGoogleDriveAccessGranted,
-  disconnectGoogleDriveAccount,
-  uploadBackupToGoogleDriveApi,
   fetchAllBackedUpCustomersForGmail,
 } from './utils/googleDriveBackup';
 
@@ -302,6 +295,11 @@ export const App: React.FC = () => {
 
       await setDoc(doc(db, 'users', targetUid, 'customers', custId), basePayload);
 
+      // Best-effort mirror to legacy (default) DB on electric-20c05 so older APK builds stay in sync
+      setDoc(doc(legacyDefaultDb, 'users', targetUid, 'customers', custId), basePayload).catch(
+        () => {}
+      );
+
       // If this verified user previously used another UID on this device, mirror to keep it updated
       const mirrorKeys = getLegacyMirrorKeysForUser(user);
       for (const mKey of mirrorKeys) {
@@ -326,6 +324,7 @@ export const App: React.FC = () => {
     const path = `users/${targetUid}/customers/${custId}`;
     try {
       await deleteDoc(doc(db, 'users', targetUid, 'customers', custId));
+      deleteDoc(doc(legacyDefaultDb, 'users', targetUid, 'customers', custId)).catch(() => {});
 
       const mirrorKeys = getLegacyMirrorKeysForUser(user);
       for (const mKey of mirrorKeys) {
@@ -526,26 +525,57 @@ export const App: React.FC = () => {
         if (typeof navigator === 'undefined' || navigator.onLine) {
           flushOfflineQueue(user, true);
 
-          // If this user previously used another UID on this device for the exact same email, migrate their records
+          // Migrate any existing records from legacy (default) DB or previous UIDs for this exact user
           (async () => {
             try {
               const currentSnap = await getDocs(collection(db, 'users', user.uid, 'customers'));
               const existingIds = new Set(currentSnap.docs.map((d) => String(d.id)));
               const legacyKeys = getLegacyMirrorKeysForUser(user);
 
+              const migrateFromSnapshot = async (snap: Awaited<ReturnType<typeof getDocs>>) => {
+                for (const docSnap of snap.docs) {
+                  const data = docSnap.data() as Record<string, any>;
+                  const cid = String(data.id || docSnap.id).replace(/[^a-zA-Z0-9_-]/g, '_');
+                  if (!cid || existingIds.has(cid)) continue;
+                  const custName = String(data.name || '').trim().slice(0, 100);
+                  if (!custName) continue;
+
+                  existingIds.add(cid);
+                  await setDoc(doc(db, 'users', user.uid, 'customers', cid), {
+                    id: cid,
+                    name: custName,
+                    father: String(data.father || '').slice(0, 100),
+                    mother: String(data.mother || '').slice(0, 100),
+                    address: String(data.address || '').slice(0, 200),
+                    mobile: String(data.mobile || '').slice(0, 30),
+                    sms: String(data.sms || '').slice(0, 50),
+                    dueDate: String(data.dueDate || '').slice(0, 10),
+                    group: String(data.group || '').slice(0, 100),
+                    lastPaidMonth: String(data.lastPaidMonth || '').slice(0, 20),
+                    userId: user.uid,
+                  }).catch(() => {});
+                }
+              };
+
+              // 1. Check same UID in electric-20c05 legacy (default) database
+              try {
+                const defaultSnap = await getDocs(
+                  collection(legacyDefaultDb, 'users', user.uid, 'customers')
+                );
+                await migrateFromSnapshot(defaultSnap);
+              } catch {
+                // ignore if (default) has no readable legacy data
+              }
+
+              // 2. Check legacy mirror keys across both db and legacyDefaultDb
               for (const lKey of legacyKeys) {
                 if (!lKey || lKey === user.uid) continue;
-                const lSnap = await getDocs(collection(db, 'users', lKey, 'customers'));
-                for (const docSnap of lSnap.docs) {
-                  const data = docSnap.data();
-                  const cid = String(data.id || docSnap.id);
-                  if (!existingIds.has(cid)) {
-                    existingIds.add(cid);
-                    await setDoc(doc(db, 'users', user.uid, 'customers', cid), {
-                      ...data,
-                      id: cid,
-                      userId: user.uid,
-                    });
+                for (const sourceDb of [db, legacyDefaultDb]) {
+                  try {
+                    const lSnap = await getDocs(collection(sourceDb, 'users', lKey, 'customers'));
+                    await migrateFromSnapshot(lSnap);
+                  } catch {
+                    // continue checking remaining keys
                   }
                 }
               }
@@ -820,7 +850,7 @@ export const App: React.FC = () => {
           timestamp: nowTs,
         });
       }
-      savePendingSyncQueue(updatedQueue);
+      savePendingSyncQueue(updatedQueue, getUserScopeKey(currentUser));
       return updatedQueue;
     });
 
@@ -834,13 +864,7 @@ export const App: React.FC = () => {
     }
   };
 
-  // Initialize Google Drive OAuth token listener (clears in-memory token on sign-out per SKILL.md)
-  useEffect(() => {
-    const unsubDrive = initDriveAuth(driveAuth);
-    return () => unsubDrive();
-  }, []);
-
-  // 1-Click Manual / Full Backup to Connected Gmail & Google Drive
+  // 1-Click Manual / Full Sync to Firebase Cloud
   const handleSyncAllLocalToCloud = async () => {
     if (!currentUser) {
       setAuthInitialTab('google');
@@ -858,62 +882,52 @@ export const App: React.FC = () => {
           timestamp: nowTs,
         });
       }
-      savePendingSyncQueue(updatedQueue);
+      savePendingSyncQueue(updatedQueue, getUserScopeKey(currentUser));
       return updatedQueue;
     });
 
     if (!isOnline) {
-      showToast('💾 সব নতুন তথ্য ব্যাকআপ কিউতে যুক্ত হয়েছে! ইন্টারনেট পেলেই Google Drive-এ আপলোড হবে।');
+      showToast('💾 সব নতুন তথ্য কিউতে যুক্ত হয়েছে! ইন্টারনেট পেলেই ক্লাউডে সিঙ্ক হবে।');
       return;
     }
 
     const cleanEmail = getCleanUserEmail(currentUser);
-    showToast(`⏳ আপনার সংযুক্ত Google Drive (${cleanEmail})-এ সব তথ্য ব্যাকআপ হচ্ছে...`);
+    showToast(`⏳ আপনার অ্যাকাউন্ট (${cleanEmail})-এ সব তথ্য সিঙ্ক হচ্ছে...`);
     setIsSyncing(true);
     try {
       await flushOfflineQueue(currentUser, true);
 
-      // Ensure every local customer is also written to the unified Gmail vault
       for (const c of customers) {
         await saveCustomerToFirestore(c, currentUser);
-      }
-
-      // If live Google Drive OAuth access token is available in memory, also upload to Google Drive API
-      const driveToken = await getDriveAccessToken();
-      if (driveToken) {
-        try {
-          await uploadBackupToGoogleDriveApi(driveToken, customers, cleanEmail);
-        } catch (driveErr) {
-          console.warn('Direct Drive API upload fallback to unified Gmail Drive vault:', driveErr);
-        }
       }
 
       const nowIso = new Date().toISOString();
       setLastSyncTime(nowIso);
       setLastBackupTime(nowIso);
-      markGoogleDriveAccessGranted(cleanEmail);
-      showToast(`✅ সফলভাবে Google Drive (${cleanEmail})-এ ${toBengaliNum(customers.length)} জন গ্রাহকের ব্যাকআপ সম্পন্ন হয়েছে!`);
+      showToast(`✅ সফলভাবে ${toBengaliNum(customers.length)} জন গ্রাহকের তথ্য ক্লাউডে সিঙ্ক হয়েছে!`);
     } finally {
       setIsSyncing(false);
     }
   };
 
-  // Connect Gmail with Google Drive Access & Auto-Restore all uploaded data (or backup current data)
-  const handleConnectGoogleDriveWithEmail = async (email: string): Promise<number> => {
-    showToast(`⏳ ${email}-এর Google Drive অ্যাক্সেস ও ব্যাকআপ চেক হচ্ছে...`);
+  // Connect selected native Android Google account & restore/sync its cloud customers
+  const handleConnectWithEmail = async (email: string): Promise<number> => {
+    showToast(`⏳ ${email}-এর অ্যাকাউন্ট ও ডেটা চেক হচ্ছে...`);
     setIsSyncing(true);
     try {
       const res = await loginWithJustEmail(auth, email);
       const cleanEmail = res.resolvedEmail;
-      markGoogleDriveAccessGranted(cleanEmail);
+      recordUserLinkedUid(cleanEmail, res.credential.user.uid);
       recordSavedGmailAccount(cleanEmail);
 
-      // Fetch all backed-up customers from Google Drive / Gmail Cloud Vault for this Gmail
-      const backedUpList = await fetchAllBackedUpCustomersForGmail(db, res.credential.user);
-      const localList = loadLocalData();
+      const backedUpList = await fetchAllBackedUpCustomersForGmail(
+        db,
+        res.credential.user,
+        legacyDefaultDb
+      );
+      const localList = loadLocalData(res.credential.user);
 
       if (backedUpList.length > 0) {
-        // Merge backed up customers with any local customers so nothing is ever lost
         const merged = [...backedUpList];
         for (const loc of localList) {
           const exists = merged.some(
@@ -928,16 +942,15 @@ export const App: React.FC = () => {
         }
 
         setCustomers(merged);
-        saveToLocalStorage(merged);
+        saveToLocalStorage(merged, res.credential.user);
         const nowIso = new Date().toISOString();
         setLastSyncTime(nowIso);
         setLastBackupTime(nowIso);
         showToast(
-          `🎉 Google Drive (${cleanEmail}) থেকে আপনার আপলোড করা ${toBengaliNum(merged.length)} জন গ্রাহকের সব তথ্য অ্যাপে চলে এসেছে!`
+          `🎉 ${cleanEmail} থেকে আপনার ${toBengaliNum(merged.length)} জন গ্রাহকের সব তথ্য লোড হয়েছে!`
         );
         return merged.length;
       } else if (localList.length > 0) {
-        // User already uploaded customers in the app -> back them all up to this Gmail's Google Drive!
         for (const loc of localList) {
           await saveCustomerToFirestore(loc, res.credential.user);
         }
@@ -945,11 +958,11 @@ export const App: React.FC = () => {
         setLastSyncTime(nowIso);
         setLastBackupTime(nowIso);
         showToast(
-          `✅ Google Drive (${cleanEmail}) অ্যাক্সেস চালু হয়েছে এবং আপনার ${toBengaliNum(localList.length)} জন গ্রাহকের সব তথ্য ব্যাকআপ রাখা হয়েছে!`
+          `✅ ${cleanEmail} সংযুক্ত হয়েছে এবং আপনার ${toBengaliNum(localList.length)} জন গ্রাহকের তথ্য সিঙ্ক করা হয়েছে!`
         );
         return localList.length;
       } else {
-        showToast(`✓ Google Drive (${cleanEmail}) সফলভাবে সংযুক্ত হয়েছে!`);
+        showToast(`✓ ${cleanEmail} সফলভাবে সাইন ইন হয়েছে!`);
         return 0;
       }
     } finally {
@@ -957,20 +970,8 @@ export const App: React.FC = () => {
     }
   };
 
-  // Connect Google Drive via official Google Workspace OAuth Popup (with drive.file & drive.appdata scopes)
-  const handleConnectGoogleDriveOAuthPopup = async (hintEmail?: string): Promise<number> => {
-    const driveRes = await googleDriveSignIn(driveAuth, hintEmail);
-    if (!driveRes) return 0;
-
-    const email = getCleanUserEmail(driveRes.user) || hintEmail || '';
-    if (email) {
-      return await handleConnectGoogleDriveWithEmail(email);
-    }
-    return 0;
-  };
-
-  // Restore all backed-up data from the connected Gmail's Google Drive at any time
-  const handleRestoreFromGoogleDrive = async (): Promise<number> => {
+  // Restore all backed-up data from Firebase Cloud
+  const handleRestoreFromCloud = async (): Promise<number> => {
     if (!currentUser) {
       setAuthInitialTab('google');
       setIsAuthModalOpen(true);
@@ -978,22 +979,26 @@ export const App: React.FC = () => {
     }
 
     const cleanEmail = getCleanUserEmail(currentUser);
-    showToast(`⏳ Google Drive (${cleanEmail}) থেকে ব্যাকআপ ডেটা অ্যাপে আনা হচ্ছে...`);
+    showToast(`⏳ ${cleanEmail} থেকে ক্লাউড ডেটা অ্যাপে আনা হচ্ছে...`);
     setIsSyncing(true);
     try {
-      const restored = await fetchAllBackedUpCustomersForGmail(db, currentUser);
+      const restored = await fetchAllBackedUpCustomersForGmail(
+        db,
+        currentUser,
+        legacyDefaultDb
+      );
       if (restored.length > 0) {
         setCustomers(restored);
-        saveToLocalStorage(restored);
+        saveToLocalStorage(restored, currentUser);
         const nowIso = new Date().toISOString();
         setLastSyncTime(nowIso);
         setLastBackupTime(nowIso);
         showToast(
-          `✅ Google Drive (${cleanEmail}) থেকে ${toBengaliNum(restored.length)} জন গ্রাহকের সব তথ্য অ্যাপে চলে এসেছে!`
+          `✅ ক্লাউড (${cleanEmail}) থেকে ${toBengaliNum(restored.length)} জন গ্রাহকের সব তথ্য লোড হয়েছে!`
         );
         return restored.length;
       } else {
-        showToast(`ℹ️ এই Gmail (${cleanEmail})-এ এখনো কোনো ব্যাকআপ ফাইল পাওয়া যায়নি।`);
+        showToast(`ℹ️ এই অ্যাকাউন্ট (${cleanEmail})-এ এখনো কোনো ক্লাউড তথ্য পাওয়া যায়নি।`);
         return 0;
       }
     } finally {
@@ -1026,30 +1031,24 @@ export const App: React.FC = () => {
       // 1. Inside the installed Android APK: open the phone's Native Android OS Google Account Picker
       if (hasNativeAndroidGooglePicker()) {
         const pickedEmail = await pickNativeAndroidGoogleAccount();
-        await handleConnectGoogleDriveWithEmail(pickedEmail);
+        await handleConnectWithEmail(pickedEmail);
         return;
       }
 
-      // 2. Desktop / Mobile Web Browser: Try Google Drive OAuth Popup first, fallback to primary Google Auth
-      try {
-        await handleConnectGoogleDriveOAuthPopup();
-        return;
-      } catch {
-        const provider = new GoogleAuthProvider();
-        provider.setCustomParameters({ prompt: 'select_account' });
-        const res = await signInWithPopup(auth, provider);
-        if (res.user?.email) {
-          recordSavedGmailAccount(res.user.email);
-          recordUserLinkedUid(res.user.email, res.user.uid);
-          markGoogleDriveAccessGranted(res.user.email);
-          const restored = await fetchAllBackedUpCustomersForGmail(db, res.user);
-          if (restored.length > 0) {
-            setCustomers(restored);
-            saveToLocalStorage(restored, res.user);
-          }
+      // 2. Desktop / Mobile Web Browser: Standard Google Sign-In Popup
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
+      const res = await signInWithPopup(auth, provider);
+      if (res.user?.email) {
+        recordSavedGmailAccount(res.user.email);
+        recordUserLinkedUid(res.user.email, res.user.uid);
+        const restored = await fetchAllBackedUpCustomersForGmail(db, res.user, legacyDefaultDb);
+        if (restored.length > 0) {
+          setCustomers(restored);
+          saveToLocalStorage(restored, res.user);
         }
-        showToast('✓ আপনার Gmail ও Google Drive সফলভাবে সংযুক্ত হয়েছে!');
       }
+      showToast('✓ আপনার Google অ্যাকাউন্ট সফলভাবে সংযুক্ত হয়েছে!');
     } catch (error: any) {
       const code = error?.code || '';
       if (code === 'auth/popup-closed-by-user') {
@@ -1059,28 +1058,15 @@ export const App: React.FC = () => {
     }
   };
 
-  const handleJustEmailLogin = async (email: string) => {
-    try {
-      await handleConnectGoogleDriveWithEmail(email);
-    } catch (err: any) {
-      console.error('Direct Gmail Login Error:', err);
-      let msg = 'লগইন ব্যর্থ হয়েছে: ';
-      if (err.code === 'auth/invalid-email') {
-        msg = 'সঠিক Gmail ঠিকানা লিখুন';
-      } else {
-        msg += err.message || '';
-      }
-      showToast(msg);
-      throw err;
-    }
-  };
-
   const handleEmailLogin = async (email: string, pass: string) => {
     try {
       const res = await signInWithStandardEmailPassword(auth, email, pass);
       recordUserLinkedUid(res.resolvedEmail, res.credential.user.uid);
-      markGoogleDriveAccessGranted(res.resolvedEmail);
-      const restored = await fetchAllBackedUpCustomersForGmail(db, res.credential.user);
+      const restored = await fetchAllBackedUpCustomersForGmail(
+        db,
+        res.credential.user,
+        legacyDefaultDb
+      );
       if (restored.length > 0) {
         setCustomers(restored);
         saveToLocalStorage(restored, res.credential.user);
@@ -1107,8 +1093,11 @@ export const App: React.FC = () => {
     try {
       const res = await registerWithStandardEmailPassword(auth, email, pass, fullName);
       recordUserLinkedUid(res.resolvedEmail, res.credential.user.uid);
-      markGoogleDriveAccessGranted(res.resolvedEmail);
-      const restored = await fetchAllBackedUpCustomersForGmail(db, res.credential.user);
+      const restored = await fetchAllBackedUpCustomersForGmail(
+        db,
+        res.credential.user,
+        legacyDefaultDb
+      );
       if (restored.length > 0) {
         setCustomers(restored);
         saveToLocalStorage(restored, res.credential.user);
@@ -1140,17 +1129,10 @@ export const App: React.FC = () => {
 
   const handleLogout = async () => {
     try {
-      clearDriveAccessToken();
-      disconnectGoogleDriveAccount();
       // Reset active in-memory customer and queue state immediately to prevent data exposure
       setCustomers([]);
       setPendingQueue([]);
       await signOut(auth);
-      try {
-        await signOut(driveAuth);
-      } catch {
-        // ignore secondary signOut error
-      }
       showToast('লগআউট করা হয়েছে');
     } catch {
       showToast('লগআউটে সমস্যা হয়েছে');
@@ -1244,32 +1226,19 @@ export const App: React.FC = () => {
           <SettingsView
             currentUser={currentUser}
             themeMode={themeMode}
-            isOnline={isOnline}
             pendingSyncCount={pendingQueue.length}
             isSyncing={isSyncing}
             lastBackupTime={lastBackupTime}
-            autoCloudBackupEnabled={autoCloudBackupEnabled}
-            onToggleAutoCloudBackup={handleToggleAutoCloudBackup}
             updateInfo={updateInfo}
             isCheckingUpdate={isCheckingUpdate}
             autoUpdateEnabled={autoUpdateEnabled}
             onToggleAutoUpdate={handleToggleAutoUpdate}
             onToggleTheme={toggleTheme}
-            onOpenAuthModal={() => {
-              setAuthInitialTab('google');
-              setIsAuthModalOpen(true);
-            }}
-            onLogout={handleLogout}
-            onSyncAllLocalToCloud={handleSyncAllLocalToCloud}
-            onConnectGoogleDriveWithEmail={handleConnectGoogleDriveWithEmail}
-            onConnectGoogleDriveOAuthPopup={handleConnectGoogleDriveOAuthPopup}
-            onRestoreFromGoogleDrive={handleRestoreFromGoogleDrive}
             onCheckForUpdate={() => handleCheckForUpdate(false)}
             onOpenUpdateModal={() => setIsUpdateModalOpen(true)}
             onSimulateUpdateNotification={handleSimulateUpdateNotification}
             customers={customers}
             onImportCustomers={handleImportCustomers}
-            onCopyText={handleCopyText}
             onShowToast={showToast}
             onShowConfirm={handleShowConfirm}
           />
@@ -1339,7 +1308,6 @@ export const App: React.FC = () => {
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
         onGoogleLogin={handleGoogleLogin}
-        onJustEmailLogin={handleJustEmailLogin}
         onEmailLogin={handleEmailLogin}
         onEmailRegister={handleEmailRegister}
         onForgotPassword={handleForgotPassword}
@@ -1347,7 +1315,7 @@ export const App: React.FC = () => {
         initialTab={authInitialTab}
       />
 
-      {/* Account & 1-Click Backup Modal */}
+      {/* Account & 1-Click Cloud Sync Modal */}
       <AccountModal
         isOpen={isAccountModalOpen}
         onClose={() => setIsAccountModalOpen(false)}
@@ -1359,11 +1327,9 @@ export const App: React.FC = () => {
         autoCloudBackupEnabled={autoCloudBackupEnabled}
         onToggleAutoCloudBackup={handleToggleAutoCloudBackup}
         onSyncAllToCloud={handleSyncAllLocalToCloud}
-        onRestoreFromGoogleDrive={handleRestoreFromGoogleDrive}
-        onConnectGoogleDriveWithEmail={handleConnectGoogleDriveWithEmail}
+        onRestoreFromCloud={handleRestoreFromCloud}
         onSwitchAccount={() => setIsAuthModalOpen(true)}
         onLogout={handleLogout}
-        onShowToast={showToast}
         onShowConfirm={handleShowConfirm}
       />
 

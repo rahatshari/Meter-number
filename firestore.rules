@@ -35,9 +35,9 @@ service cloud.firestore {
         && (!('father' in data) || (data.father is string && data.father.size() <= 100))
         && (!('mother' in data) || (data.mother is string && data.mother.size() <= 100))
         && (!('address' in data) || (data.address is string && data.address.size() <= 200))
-        && data.mobile is string && data.mobile.size() > 0 && data.mobile.size() <= 30
-        && data.sms is string && data.sms.size() > 0 && data.sms.size() <= 50
-        && data.dueDate is string && data.dueDate.size() > 0 && data.dueDate.size() <= 10
+        && data.mobile is string && data.mobile.size() <= 30
+        && data.sms is string && data.sms.size() <= 50
+        && data.dueDate is string && data.dueDate.size() <= 10
         && (!('group' in data) || (data.group is string && data.group.size() <= 100))
         && (!('lastPaidMonth' in data) || (data.lastPaidMonth is string && data.lastPaidMonth.size() <= 20));
     }

@@ -131,7 +131,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             onClick={onOpenUpdateModal}
             style={{
               cursor: 'pointer',
-              backgroundColor: 'rgba(255, 255, 255, 0.45)',
+              backgroundColor: 'var(--md-sys-color-soft-overlay)',
               padding: '6px 10px',
               borderRadius: '8px',
               fontSize: '11px',
@@ -219,10 +219,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               : pendingSyncCount > 0
               ? 'var(--md-sys-color-warning)'
               : 'var(--md-sys-color-primary-container)',
-            color:
-              backupPulse || pendingSyncCount > 0
-                ? '#FFFFFF'
-                : 'var(--md-sys-color-on-primary-container)',
+            color: backupPulse
+              ? 'var(--md-sys-color-on-success)'
+              : pendingSyncCount > 0
+              ? 'var(--md-sys-color-on-warning)'
+              : 'var(--md-sys-color-on-primary-container)',
             transition: 'all 0.2s',
           }}
         >

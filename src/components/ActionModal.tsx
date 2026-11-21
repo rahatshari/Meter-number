@@ -42,7 +42,7 @@ export const ActionModal: React.FC<ActionModalProps> = ({
             className={isPaid ? 'md3-btn-outlined' : 'md3-btn-filled'}
             style={{
               backgroundColor: isPaid ? 'transparent' : 'var(--md-sys-color-success)',
-              color: isPaid ? 'var(--md-sys-color-warning)' : '#FFFFFF',
+              color: isPaid ? 'var(--md-sys-color-warning)' : 'var(--md-sys-color-on-success)',
               borderColor: isPaid ? 'var(--md-sys-color-warning)' : 'transparent',
             }}
             onClick={() => {
