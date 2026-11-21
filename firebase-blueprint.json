@@ -29,6 +29,61 @@
         "userId": { "type": "string", "description": "Owner user ID" }
       },
       "required": ["id", "name", "userId"]
+    },
+    "UserVaultLink": {
+      "title": "UserVaultLink",
+      "description": "Maps a Firebase Auth UID to its unified shared account vault",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128, "description": "Firebase Auth UID" },
+        "vaultId": { "type": "string", "maxLength": 128, "description": "Canonical vault ID" },
+        "updatedAt": { "type": "string", "maxLength": 40, "description": "ISO timestamp" }
+      },
+      "required": ["userId", "vaultId"]
+    },
+    "AccountVault": {
+      "title": "AccountVault",
+      "description": "Shared vault parent document allowing multiple login UIDs of the same owner to sync one unified customer list",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "description": "Vault ID" },
+        "ownerUid": { "type": "string", "maxLength": 128, "description": "Creator Firebase Auth UID" },
+        "memberUids": { "type": "array", "description": "Authorized member UIDs (max 5)" },
+        "createdAt": { "type": "string", "maxLength": 40, "description": "ISO timestamp" }
+      },
+      "required": ["id", "ownerUid", "memberUids"]
+    },
+    "VaultMember": {
+      "title": "VaultMember",
+      "description": "Authorized login UID belonging to an account vault",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128, "description": "Authorized Firebase Auth UID" },
+        "addedBy": { "type": "string", "maxLength": 128, "description": "UID that authorized this member" },
+        "role": { "type": "string", "maxLength": 20, "description": "Member role" },
+        "createdAt": { "type": "string", "maxLength": 40, "description": "ISO timestamp" }
+      },
+      "required": ["uid", "addedBy", "role"]
+    },
+    "VaultCustomer": {
+      "title": "VaultCustomer",
+      "description": "Customer record stored inside an owner's unified account vault",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "description": "Unique ID of customer" },
+        "name": { "type": "string", "maxLength": 100, "description": "Customer name" },
+        "father": { "type": "string", "maxLength": 100, "description": "Father's name" },
+        "mother": { "type": "string", "maxLength": 100, "description": "Mother's name" },
+        "address": { "type": "string", "maxLength": 200, "description": "Address" },
+        "mobile": { "type": "string", "maxLength": 30, "description": "Mobile contact number" },
+        "sms": { "type": "string", "maxLength": 50, "description": "SMS account or meter number" },
+        "dueDate": { "type": "string", "maxLength": 10, "description": "Due day of the month (1-31)" },
+        "group": { "type": "string", "maxLength": 100, "description": "Group/Neighborhood name (optional legacy)" },
+        "lastPaidMonth": { "type": "string", "maxLength": 20, "description": "Last paid month in YYYY-M format" },
+        "userId": { "type": "string", "maxLength": 128, "description": "Creator Firebase Auth UID" },
+        "memberUids": { "type": "array", "description": "Authorized member UIDs (max 5)" }
+      },
+      "required": ["id", "name", "mobile", "sms", "dueDate", "userId", "memberUids"]
     }
   },
   "firestore": {
@@ -39,6 +94,22 @@
     "/users/{userId}/groups/{groupId}": {
       "schema": { "$ref": "#/entities/Group" },
       "description": "Groups belonging to a specific authenticated user"
+    },
+    "/user_vaults/{userId}": {
+      "schema": { "$ref": "#/entities/UserVaultLink" },
+      "description": "Per-UID canonical vault link pointer"
+    },
+    "/vaults/{vaultId}": {
+      "schema": { "$ref": "#/entities/AccountVault" },
+      "description": "Unified shared account vault"
+    },
+    "/vaults/{vaultId}/members/{memberUid}": {
+      "schema": { "$ref": "#/entities/VaultMember" },
+      "description": "Authorized UIDs allowed to access a unified account vault"
+    },
+    "/vaults/{vaultId}/customers/{customerId}": {
+      "schema": { "$ref": "#/entities/VaultCustomer" },
+      "description": "Unified customer records synced across linked login methods"
     }
   }
 }

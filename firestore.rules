@@ -26,6 +26,11 @@ service cloud.firestore {
       return resource.data;
     }
 
+    function isVaultMember(vaultId) {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/vaults/$(vaultId)/members/$(request.auth.uid));
+    }
+
     function isValidCustomer(data, userId) {
       return data.keys().hasAll(['id', 'name', 'mobile', 'sms', 'dueDate', 'userId'])
         && data.keys().hasOnly(['id', 'name', 'father', 'mother', 'address', 'mobile', 'sms', 'dueDate', 'group', 'lastPaidMonth', 'userId', 'createdAt', 'updatedAt'])
@@ -48,6 +53,58 @@ service cloud.firestore {
         && data.userId == userId
         && data.id is string && data.id.size() > 0 && data.id.size() <= 128
         && data.name is string && data.name.size() > 0 && data.name.size() <= 100;
+    }
+
+    function isValidUserVault(data, userId) {
+      return data.keys().hasAll(['userId', 'vaultId'])
+        && data.keys().hasOnly(['userId', 'vaultId', 'updatedAt'])
+        && data.userId == userId
+        && isValidId(data.vaultId)
+        && (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 40));
+    }
+
+    function isValidVault(data, vaultId) {
+      return data.keys().hasAll(['id', 'ownerUid', 'memberUids'])
+        && data.keys().hasOnly(['id', 'ownerUid', 'memberUids', 'createdAt'])
+        && data.id == vaultId
+        && data.ownerUid is string && data.ownerUid.size() > 0 && data.ownerUid.size() <= 128
+        && data.memberUids is list
+        && data.memberUids.size() >= 1
+        && data.memberUids.size() <= 5
+        && data.memberUids[0] is string && data.memberUids[0].size() > 0 && data.memberUids[0].size() <= 128
+        && request.auth.uid in data.memberUids
+        && (!('createdAt' in data) || (data.createdAt is string && data.createdAt.size() <= 40));
+    }
+
+    function isValidVaultMemberDoc(data, memberUid) {
+      return data.keys().hasAll(['uid', 'addedBy', 'role'])
+        && data.keys().hasOnly(['uid', 'addedBy', 'role', 'createdAt'])
+        && data.uid == memberUid
+        && isValidId(data.uid)
+        && data.addedBy == request.auth.uid
+        && data.role == 'owner'
+        && (!('createdAt' in data) || (data.createdAt is string && data.createdAt.size() <= 40));
+    }
+
+    function isValidVaultCustomer(data) {
+      return data.keys().hasAll(['id', 'name', 'mobile', 'sms', 'dueDate', 'userId', 'memberUids'])
+        && data.keys().hasOnly(['id', 'name', 'father', 'mother', 'address', 'mobile', 'sms', 'dueDate', 'group', 'lastPaidMonth', 'userId', 'memberUids', 'createdAt', 'updatedAt'])
+        && data.userId is string && data.userId.size() > 0 && data.userId.size() <= 128
+        && data.id is string && data.id.size() > 0 && data.id.size() <= 128
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 100
+        && (!('father' in data) || (data.father is string && data.father.size() <= 100))
+        && (!('mother' in data) || (data.mother is string && data.mother.size() <= 100))
+        && (!('address' in data) || (data.address is string && data.address.size() <= 200))
+        && data.mobile is string && data.mobile.size() <= 30
+        && data.sms is string && data.sms.size() <= 50
+        && data.dueDate is string && data.dueDate.size() <= 10
+        && (!('group' in data) || (data.group is string && data.group.size() <= 100))
+        && (!('lastPaidMonth' in data) || (data.lastPaidMonth is string && data.lastPaidMonth.size() <= 20))
+        && data.memberUids is list
+        && data.memberUids.size() >= 1
+        && data.memberUids.size() <= 5
+        && data.memberUids[0] is string && data.memberUids[0].size() > 0 && data.memberUids[0].size() <= 128
+        && request.auth.uid in data.memberUids;
     }
 
     match /users/{userId} {
@@ -75,6 +132,70 @@ service cloud.firestore {
           && incoming().id == existing().id
           && incoming().userId == existing().userId;
         allow delete: if isOwner(userId) && isValidId(groupId);
+      }
+    }
+
+    match /user_vaults/{userId} {
+      allow get: if isOwner(userId) && isValidId(userId);
+      allow create, update: if isOwner(userId)
+        && isValidId(userId)
+        && isValidUserVault(incoming(), userId);
+    }
+
+    match /vaults/{vaultId} {
+      allow get: if isSignedIn() && isValidId(vaultId) && isVaultMember(vaultId);
+      allow create: if isSignedIn()
+        && isValidId(vaultId)
+        && isValidVault(incoming(), vaultId)
+        && incoming().ownerUid == request.auth.uid;
+      allow update: if isSignedIn()
+        && isValidId(vaultId)
+        && isValidVault(incoming(), vaultId)
+        && incoming().diff(existing()).affectedKeys().hasOnly(['memberUids'])
+        && incoming().id == existing().id
+        && incoming().ownerUid == existing().ownerUid
+        && isVaultMember(vaultId);
+
+      match /members/{memberUid} {
+        allow get: if isSignedIn()
+          && isValidId(vaultId)
+          && isValidId(memberUid)
+          && (isOwner(memberUid) || isVaultMember(vaultId));
+        allow list: if isSignedIn() && resource.data.uid == request.auth.uid;
+        allow create: if isSignedIn()
+          && isValidId(vaultId)
+          && isValidId(memberUid)
+          && isValidVaultMemberDoc(incoming(), memberUid)
+          && (
+            (memberUid == request.auth.uid
+              && get(/databases/$(database)/documents/vaults/$(vaultId)).data.ownerUid == request.auth.uid)
+            || isVaultMember(vaultId)
+          );
+      }
+
+      match /customers/{customerId} {
+        allow get: if isSignedIn()
+          && isValidId(vaultId)
+          && isValidId(customerId)
+          && isVaultMember(vaultId);
+        allow list: if isSignedIn() && request.auth.uid in resource.data.memberUids;
+        allow create: if isSignedIn()
+          && isValidId(vaultId)
+          && isValidId(customerId)
+          && isValidVaultCustomer(incoming())
+          && incoming().userId == request.auth.uid
+          && isVaultMember(vaultId);
+        allow update: if isSignedIn()
+          && isValidId(vaultId)
+          && isValidId(customerId)
+          && isValidVaultCustomer(incoming())
+          && incoming().id == existing().id
+          && incoming().userId == existing().userId
+          && isVaultMember(vaultId);
+        allow delete: if isSignedIn()
+          && isValidId(vaultId)
+          && isValidId(customerId)
+          && isVaultMember(vaultId);
       }
     }
   }

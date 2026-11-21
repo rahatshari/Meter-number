@@ -14,6 +14,8 @@ import {
   setDoc,
   deleteDoc,
   onSnapshot,
+  query,
+  where,
 } from 'firebase/firestore';
 
 import { auth, db, legacyDefaultDb, handleFirestoreError } from './firebase';
@@ -55,12 +57,19 @@ import {
   registerWithStandardEmailPassword,
   hasNativeAndroidGooglePicker,
   pickNativeAndroidGoogleAccount,
-  getSharedAccountKey,
   getLegacyMirrorKeysForUser,
   getCleanUserEmail,
   getUserScopeKey,
   recordUserLinkedUid,
+  getLastLocalOwnerUid,
+  setLastLocalOwnerUid,
+  mergeCustomerLists,
 } from './utils/authHelpers';
+import {
+  ensureUserVaultSetup,
+  saveCustomerToVault,
+  deleteCustomerFromVault,
+} from './utils/accountUnifier';
 import {
   fetchAllBackedUpCustomersForGmail,
 } from './utils/googleDriveBackup';
@@ -162,6 +171,8 @@ export const App: React.FC = () => {
     return [];
   });
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const activeVaultIdRef = useRef<string>('');
+  const vaultMemberUidsRef = useRef<string[]>([]);
 
   // Search & Filters (for CustomersView)
   const [searchQuery, setSearchQuery] = useState('');
@@ -295,6 +306,17 @@ export const App: React.FC = () => {
 
       await setDoc(doc(db, 'users', targetUid, 'customers', custId), basePayload);
 
+      // Sync to shared account vault if active so all linked login methods see changes in real time
+      if (activeVaultIdRef.current) {
+        saveCustomerToVault(
+          db,
+          activeVaultIdRef.current,
+          vaultMemberUidsRef.current,
+          c,
+          targetUid
+        ).catch(() => {});
+      }
+
       // Best-effort mirror to legacy (default) DB on electric-20c05 so older APK builds stay in sync
       setDoc(doc(legacyDefaultDb, 'users', targetUid, 'customers', custId), basePayload).catch(
         () => {}
@@ -324,6 +346,9 @@ export const App: React.FC = () => {
     const path = `users/${targetUid}/customers/${custId}`;
     try {
       await deleteDoc(doc(db, 'users', targetUid, 'customers', custId));
+      if (activeVaultIdRef.current) {
+        deleteCustomerFromVault(db, activeVaultIdRef.current, custId).catch(() => {});
+      }
       deleteDoc(doc(legacyDefaultDb, 'users', targetUid, 'customers', custId)).catch(() => {});
 
       const mirrorKeys = getLegacyMirrorKeysForUser(user);
@@ -496,11 +521,13 @@ export const App: React.FC = () => {
     }
   }, [isOnline, autoUpdateEnabled, handleCheckForUpdate]);
 
-  // Auth observer and Firestore listener with Offline Queue Reconciliation
+  // Auth observer and Firestore listener with Unified Vault + Offline Queue Reconciliation
   useEffect(() => {
     let unsubscribeCustomers: (() => void) | null = null;
+    let isSessionCancelled = false;
 
     const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
+      isSessionCancelled = false;
       setCurrentUser(user);
 
       if (unsubscribeCustomers) {
@@ -510,138 +537,141 @@ export const App: React.FC = () => {
 
       if (user) {
         const cleanEmail = getCleanUserEmail(user);
+        const scopeKey = getUserScopeKey(user);
+        const lastOwnerUid = getLastLocalOwnerUid(scopeKey);
+        const isSwitchingUidOnDevice = Boolean(lastOwnerUid && lastOwnerUid !== user.uid);
+
         if (cleanEmail) {
           recordUserLinkedUid(cleanEmail, user.uid);
         }
 
-        const scopeKey = getUserScopeKey(user);
         const userLocalData = loadLocalData(user);
         const userQueue = loadPendingSyncQueue(scopeKey);
 
         setCustomers(userLocalData);
         setPendingQueue(userQueue);
 
-        // First flush any pending offline changes for this user
+        const attachCustomerSnapshot = (source: 'vault' | 'user', vId?: string) => {
+          if (unsubscribeCustomers) {
+            unsubscribeCustomers();
+            unsubscribeCustomers = null;
+          }
+          const targetRef =
+            source === 'vault' && vId
+              ? query(
+                  collection(db, 'vaults', vId, 'customers'),
+                  where('memberUids', 'array-contains', user.uid)
+                )
+              : collection(db, 'users', user.uid, 'customers');
+          const custPath =
+            source === 'vault' && vId ? `vaults/${vId}/customers` : `users/${user.uid}/customers`;
+
+          unsubscribeCustomers = onSnapshot(
+            targetRef,
+            (snapshot) => {
+              const cloudCustomers: Customer[] = [];
+              snapshot.forEach((docSnap) => {
+                const data = docSnap.data();
+                cloudCustomers.push({
+                  id: parseFloat(data.id) || data.id,
+                  name: data.name,
+                  father: data.father || '',
+                  mother: data.mother || '',
+                  address: data.address || '',
+                  mobile: data.mobile || '',
+                  sms: data.sms || '',
+                  dueDate: data.dueDate || '',
+                  group: data.group || '',
+                  lastPaidMonth: data.lastPaidMonth || '',
+                  userId: data.userId || user.uid,
+                });
+              });
+
+              const localList = loadLocalData(user);
+              const currentQueue = loadPendingSyncQueue(scopeKey);
+              const stillSwitching =
+                Boolean(getLastLocalOwnerUid(scopeKey)) &&
+                getLastLocalOwnerUid(scopeKey) !== user.uid;
+
+              if (stillSwitching && localList.length > 0) {
+                const safeMerged = mergeCustomerLists(cloudCustomers, localList);
+                setCustomers(safeMerged);
+                saveToLocalStorage(safeMerged, user);
+              } else if (cloudCustomers.length > 0 || currentQueue.length > 0) {
+                const reconciled = reconcileCloudWithPendingQueue(
+                  cloudCustomers,
+                  localList,
+                  currentQueue
+                );
+                setCustomers(reconciled);
+                saveToLocalStorage(reconciled, user);
+                setLastLocalOwnerUid(scopeKey, user.uid);
+              } else if (localList.length > 0) {
+                setCustomers(localList);
+                localList.forEach((c) => {
+                  queueMutation({
+                    id: String(c.id),
+                    action: 'upsert',
+                    customer: c,
+                    timestamp: Date.now(),
+                  });
+                });
+              } else {
+                setCustomers([]);
+                saveToLocalStorage([], user);
+                setLastLocalOwnerUid(scopeKey, user.uid);
+              }
+            },
+            (error) => {
+              if (typeof navigator !== 'undefined' && !navigator.onLine) {
+                return;
+              }
+              console.warn('Firestore snapshot error on path:', custPath, error);
+            }
+          );
+        };
+
         if (typeof navigator === 'undefined' || navigator.onLine) {
           flushOfflineQueue(user, true);
 
-          // Migrate any existing records from legacy (default) DB or previous UIDs for this exact user
-          (async () => {
-            try {
-              const currentSnap = await getDocs(collection(db, 'users', user.uid, 'customers'));
-              const existingIds = new Set(currentSnap.docs.map((d) => String(d.id)));
-              const legacyKeys = getLegacyMirrorKeysForUser(user);
+          try {
+            const vaultState = await ensureUserVaultSetup(
+              db,
+              legacyDefaultDb,
+              user,
+              userLocalData,
+              isSwitchingUidOnDevice
+            );
+            if (isSessionCancelled || auth.currentUser?.uid !== user.uid) return;
 
-              const migrateFromSnapshot = async (snap: Awaited<ReturnType<typeof getDocs>>) => {
-                for (const docSnap of snap.docs) {
-                  const data = docSnap.data() as Record<string, any>;
-                  const cid = String(data.id || docSnap.id).replace(/[^a-zA-Z0-9_-]/g, '_');
-                  if (!cid || existingIds.has(cid)) continue;
-                  const custName = String(data.name || '').trim().slice(0, 100);
-                  if (!custName) continue;
+            activeVaultIdRef.current = vaultState.vaultId;
+            vaultMemberUidsRef.current = vaultState.memberUids;
 
-                  existingIds.add(cid);
-                  await setDoc(doc(db, 'users', user.uid, 'customers', cid), {
-                    id: cid,
-                    name: custName,
-                    father: String(data.father || '').slice(0, 100),
-                    mother: String(data.mother || '').slice(0, 100),
-                    address: String(data.address || '').slice(0, 200),
-                    mobile: String(data.mobile || '').slice(0, 30),
-                    sms: String(data.sms || '').slice(0, 50),
-                    dueDate: String(data.dueDate || '').slice(0, 10),
-                    group: String(data.group || '').slice(0, 100),
-                    lastPaidMonth: String(data.lastPaidMonth || '').slice(0, 20),
-                    userId: user.uid,
-                  }).catch(() => {});
-                }
-              };
-
-              // 1. Check same UID in electric-20c05 legacy (default) database
-              try {
-                const defaultSnap = await getDocs(
-                  collection(legacyDefaultDb, 'users', user.uid, 'customers')
-                );
-                await migrateFromSnapshot(defaultSnap);
-              } catch {
-                // ignore if (default) has no readable legacy data
-              }
-
-              // 2. Check legacy mirror keys across both db and legacyDefaultDb
-              for (const lKey of legacyKeys) {
-                if (!lKey || lKey === user.uid) continue;
-                for (const sourceDb of [db, legacyDefaultDb]) {
-                  try {
-                    const lSnap = await getDocs(collection(sourceDb, 'users', lKey, 'customers'));
-                    await migrateFromSnapshot(lSnap);
-                  } catch {
-                    // continue checking remaining keys
-                  }
-                }
-              }
-            } catch {
-              // ignore background migration errors
+            if (vaultState.mergedCustomers.length > 0) {
+              setCustomers(vaultState.mergedCustomers);
+              saveToLocalStorage(vaultState.mergedCustomers, user);
             }
-          })();
-        }
+            setLastLocalOwnerUid(scopeKey, user.uid);
 
-        const custPath = `users/${user.uid}/customers`;
-        unsubscribeCustomers = onSnapshot(
-          collection(db, 'users', user.uid, 'customers'),
-          (snapshot) => {
-            const cloudCustomers: Customer[] = [];
-            snapshot.forEach((docSnap) => {
-              const data = docSnap.data();
-              cloudCustomers.push({
-                id: parseFloat(data.id) || data.id,
-                name: data.name,
-                father: data.father || '',
-                mother: data.mother || '',
-                address: data.address || '',
-                mobile: data.mobile || '',
-                sms: data.sms || '',
-                dueDate: data.dueDate || '',
-                group: data.group || '',
-                lastPaidMonth: data.lastPaidMonth || '',
-                userId: data.userId || user.uid,
-              });
-            });
-
-            const localList = loadLocalData(user);
-            const currentQueue = loadPendingSyncQueue(scopeKey);
-
-            if (cloudCustomers.length > 0 || currentQueue.length > 0) {
-              const reconciled = reconcileCloudWithPendingQueue(
-                cloudCustomers,
-                localList,
-                currentQueue
+            if (isSwitchingUidOnDevice && vaultState.mergedCustomers.length > 0) {
+              showToast(
+                `🔄 একই Gmail-এর পূর্বের ও বর্তমান লগইনের মোট ${toBengaliNum(vaultState.mergedCustomers.length)} জন গ্রাহক একত্র হয়েছে!`
               );
-              setCustomers(reconciled);
-              saveToLocalStorage(reconciled, user);
-            } else if (localList.length > 0) {
-              // Upload existing local data to cloud if cloud is newly initialized
-              setCustomers(localList);
-              localList.forEach((c) => {
-                queueMutation({
-                  id: String(c.id),
-                  action: 'upsert',
-                  customer: c,
-                  timestamp: Date.now(),
-                });
-              });
-            } else {
-              setCustomers([]);
-              saveToLocalStorage([], user);
             }
-          },
-          (error) => {
-            if (typeof navigator !== 'undefined' && !navigator.onLine) {
-              return;
-            }
-            console.warn('Firestore snapshot error on path:', custPath, error);
+
+            attachCustomerSnapshot('vault', vaultState.vaultId);
+          } catch (err) {
+            console.warn('Vault setup fallback to user bucket:', err);
+            activeVaultIdRef.current = '';
+            vaultMemberUidsRef.current = [user.uid];
+            attachCustomerSnapshot('user');
           }
-        );
+        } else {
+          attachCustomerSnapshot('user');
+        }
       } else {
+        activeVaultIdRef.current = '';
+        vaultMemberUidsRef.current = [];
         const local = loadLocalData(null);
         setCustomers(local);
         setPendingQueue(loadPendingSyncQueue('guest'));
@@ -649,10 +679,11 @@ export const App: React.FC = () => {
     });
 
     return () => {
+      isSessionCancelled = true;
       unsubscribeAuth();
       if (unsubscribeCustomers) unsubscribeCustomers();
     };
-  }, [flushOfflineQueue, queueMutation]);
+  }, [flushOfflineQueue, queueMutation, showToast]);
 
   const currentMonth = getCurrentMonthStr();
 
@@ -970,7 +1001,7 @@ export const App: React.FC = () => {
     }
   };
 
-  // Restore all backed-up data from Firebase Cloud
+  // Restore all backed-up data from Firebase Cloud (merges vault + user buckets safely)
   const handleRestoreFromCloud = async (): Promise<number> => {
     if (!currentUser) {
       setAuthInitialTab('google');
@@ -982,11 +1013,23 @@ export const App: React.FC = () => {
     showToast(`⏳ ${cleanEmail} থেকে ক্লাউড ডেটা অ্যাপে আনা হচ্ছে...`);
     setIsSyncing(true);
     try {
-      const restored = await fetchAllBackedUpCustomersForGmail(
+      const vaultState = await ensureUserVaultSetup(
+        db,
+        legacyDefaultDb,
+        currentUser,
+        customers,
+        false
+      );
+      activeVaultIdRef.current = vaultState.vaultId;
+      vaultMemberUidsRef.current = vaultState.memberUids;
+
+      const legacyRestored = await fetchAllBackedUpCustomersForGmail(
         db,
         currentUser,
         legacyDefaultDb
       );
+      const restored = mergeCustomerLists(vaultState.mergedCustomers, legacyRestored);
+
       if (restored.length > 0) {
         setCustomers(restored);
         saveToLocalStorage(restored, currentUser);

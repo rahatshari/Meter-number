@@ -262,3 +262,50 @@ test('googleDriveBackup defines drive.file & drive.appdata SCOPES and normalizes
   assert.equal(await getDriveAccessToken(), null);
 });
 
+test('recordUserLinkedUid keeps all UIDs for same Gmail and mergeCustomerLists unifies without duplicates', async () => {
+  const {
+    recordUserLinkedUid,
+    getLegacyMirrorKeysForUser,
+    getLastLocalOwnerUid,
+    setLastLocalOwnerUid,
+    mergeCustomerLists,
+  } = await import('./authHelpers');
+
+  const mockStorage: Record<string, string> = {};
+  (globalThis as any).localStorage = {
+    getItem: (k: string) => mockStorage[k] || null,
+    setItem: (k: string, v: string) => {
+      mockStorage[k] = v;
+    },
+    removeItem: (k: string) => {
+      delete mockStorage[k];
+    },
+  };
+
+  recordUserLinkedUid('same.user@gmail.com', 'uid_password_method');
+  recordUserLinkedUid('same.user@gmail.com', 'uid_only_gmail_method');
+
+  const keys = getLegacyMirrorKeysForUser({
+    uid: 'uid_only_gmail_method',
+    email: 'same.user+biddut@gmail.com',
+  });
+  assert.equal(keys.includes('uid_password_method'), true);
+  assert.equal(keys.includes('uid_only_gmail_method'), true);
+
+  setLastLocalOwnerUid('same_user_gmail_com', 'uid_password_method');
+  assert.equal(getLastLocalOwnerUid('same_user_gmail_com'), 'uid_password_method');
+
+  const listFromPw: Customer[] = [
+    { ...sampleCustomerA, lastPaidMonth: '' },
+  ];
+  const listFromGmail: Customer[] = [
+    { ...sampleCustomerA, lastPaidMonth: '2026-11' },
+    sampleCustomerB,
+  ];
+  const merged = mergeCustomerLists(listFromPw, listFromGmail);
+  assert.equal(merged.length, 2);
+  assert.equal(merged[0].lastPaidMonth, '2026-11');
+  assert.equal(merged[1].id, '102');
+});
+
+

@@ -5,6 +5,7 @@ import {
   createUserWithEmailAndPassword,
   updateProfile,
 } from 'firebase/auth';
+import { Customer } from '../types';
 
 const SAVED_EMAILS_KEY = 'biddut_bill_user_saved_gmails';
 
@@ -49,17 +50,77 @@ export function getUserScopeKey(
 }
 
 /**
- * Saves a verified UID associated with a clean email on this device so that
- * if the user switches between Google login and Password login for the exact same email,
- * their own records can be linked without ever accessing anyone else's data.
+ * Tracks the last Firebase UID that populated the local cache for a given email scopeKey.
+ * Used to detect when a user switches between two login methods (e.g. Password <-> Only Gmail)
+ * for the same Gmail address on this device so their data is merged instead of overwritten.
+ */
+export function getLastLocalOwnerUid(scopeKey: string): string {
+  if (typeof localStorage === 'undefined' || !scopeKey) return '';
+  try {
+    return localStorage.getItem(`biddut_last_owner_uid_${scopeKey}`) || '';
+  } catch {
+    return '';
+  }
+}
+
+export function setLastLocalOwnerUid(scopeKey: string, uid: string): void {
+  if (typeof localStorage === 'undefined' || !scopeKey || !uid) return;
+  try {
+    localStorage.setItem(`biddut_last_owner_uid_${scopeKey}`, uid);
+  } catch {
+    // ignore storage errors
+  }
+}
+
+export function getSavedVaultIdForEmail(email: string): string {
+  if (typeof localStorage === 'undefined' || !email) return '';
+  const clean = normalizeGmailInput(email).replace(/\+biddut([a-z0-9_]*)@/i, '@');
+  if (!clean || !clean.includes('@')) return '';
+  try {
+    return localStorage.getItem(`biddut_vault_id_${clean.replace(/[^a-z0-9]/g, '_')}`) || '';
+  } catch {
+    return '';
+  }
+}
+
+export function saveVaultIdForEmail(email: string, vaultId: string): void {
+  if (typeof localStorage === 'undefined' || !email || !vaultId) return;
+  const clean = normalizeGmailInput(email).replace(/\+biddut([a-z0-9_]*)@/i, '@');
+  if (!clean || !clean.includes('@')) return;
+  try {
+    localStorage.setItem(`biddut_vault_id_${clean.replace(/[^a-z0-9]/g, '_')}`, vaultId);
+  } catch {
+    // ignore storage errors
+  }
+}
+
+/**
+ * Saves a verified UID associated with a clean email on this device (keeping a list of all
+ * UIDs used for this exact email, never overwriting previous UIDs) so that if the user
+ * switches between Google/Only-Gmail login and Password login, their records unify cleanly.
  */
 export function recordUserLinkedUid(email: string, uid: string): void {
   if (typeof localStorage === 'undefined' || !email || !uid) return;
   const clean = normalizeGmailInput(email).replace(/\+biddut([a-z0-9_]*)@/i, '@');
   if (!clean || !clean.includes('@')) return;
+  const normKey = clean.replace(/[^a-z0-9]/g, '_');
   try {
-    const key = `biddut_linked_uid_${clean.replace(/[^a-z0-9]/g, '_')}`;
-    localStorage.setItem(key, uid);
+    const legacySingle = localStorage.getItem(`biddut_linked_uid_${normKey}`);
+    const listRaw = localStorage.getItem(`biddut_linked_uids_${normKey}`);
+    const set = new Set<string>();
+    if (legacySingle) set.add(legacySingle);
+    if (listRaw) {
+      const parsed = JSON.parse(listRaw);
+      if (Array.isArray(parsed)) {
+        for (const item of parsed) {
+          if (typeof item === 'string' && item.trim()) set.add(item.trim());
+        }
+      }
+    }
+    set.add(uid);
+    const list = Array.from(set).slice(-5);
+    localStorage.setItem(`biddut_linked_uids_${normKey}`, JSON.stringify(list));
+    localStorage.setItem(`biddut_linked_uid_${normKey}`, uid);
   } catch {
     // ignore storage write errors
   }
@@ -78,7 +139,7 @@ export function getSharedAccountKey(
 }
 
 /**
- * Returns legacy UID buckets belonging strictly to this user on this device.
+ * Returns all known UIDs belonging strictly to this user's exact email on this device.
  * Never hardcodes any foreign UIDs, ensuring zero data leakage between different users.
  */
 export function getLegacyMirrorKeysForUser(
@@ -88,8 +149,20 @@ export function getLegacyMirrorKeysForUser(
   const keys = new Set<string>([user.uid]);
   const cleanEmail = getCleanUserEmail(user);
   if (cleanEmail && typeof localStorage !== 'undefined') {
+    const normKey = cleanEmail.replace(/[^a-z0-9]/g, '_');
     try {
-      const savedAltUid = localStorage.getItem(`biddut_linked_uid_${cleanEmail.replace(/[^a-z0-9]/g, '_')}`);
+      const listRaw = localStorage.getItem(`biddut_linked_uids_${normKey}`);
+      if (listRaw) {
+        const parsed = JSON.parse(listRaw);
+        if (Array.isArray(parsed)) {
+          for (const item of parsed) {
+            if (typeof item === 'string' && item.trim()) {
+              keys.add(item.trim());
+            }
+          }
+        }
+      }
+      const savedAltUid = localStorage.getItem(`biddut_linked_uid_${normKey}`);
       if (savedAltUid && savedAltUid !== user.uid) {
         keys.add(savedAltUid);
       }
@@ -98,6 +171,60 @@ export function getLegacyMirrorKeysForUser(
     }
   }
   return Array.from(keys);
+}
+
+/**
+ * Pure helper to merge two customer lists without creating duplicates.
+ * Matches by ID, normalized SMS/meter number, or normalized Name + Father.
+ * When a duplicate exists in both lists, preserves paid status and fuller contact fields.
+ */
+export function mergeCustomerLists(primary: Customer[], secondary: Customer[]): Customer[] {
+  const merged = primary.map((c) => ({ ...c }));
+
+  for (const cand of secondary) {
+    if (!cand || (!cand.name && !cand.sms)) continue;
+    const candId = String(cand.id || '').trim();
+    const candSms = String(cand.sms || '').trim();
+    const candName = String(cand.name || '').trim().toLowerCase();
+    const candFather = String(cand.father || '').trim().toLowerCase();
+
+    const idx = merged.findIndex((existing) => {
+      if (candId && String(existing.id) === candId) return true;
+      const exSms = String(existing.sms || '').trim();
+      if (candSms && exSms && candSms === exSms) return true;
+      const exName = String(existing.name || '').trim().toLowerCase();
+      const exFather = String(existing.father || '').trim().toLowerCase();
+      if (candName && exName && candName === exName && candFather === exFather) {
+        return true;
+      }
+      return false;
+    });
+
+    if (idx === -1) {
+      merged.push({ ...cand });
+    } else {
+      const cur = merged[idx];
+      merged[idx] = {
+        ...cur,
+        father: cur.father || cand.father || '',
+        mother: cur.mother || cand.mother || '',
+        address: cur.address || cand.address || '',
+        mobile: cur.mobile || cand.mobile || '',
+        sms: cur.sms || cand.sms || '',
+        dueDate: cur.dueDate || cand.dueDate || '',
+        group: cur.group || cand.group || '',
+        lastPaidMonth:
+          cur.lastPaidMonth && cand.lastPaidMonth
+            ? cur.lastPaidMonth >= cand.lastPaidMonth
+              ? cur.lastPaidMonth
+              : cand.lastPaidMonth
+            : cur.lastPaidMonth || cand.lastPaidMonth || '',
+        userId: cur.userId || cand.userId,
+      };
+    }
+  }
+
+  return merged;
 }
 
 /**
